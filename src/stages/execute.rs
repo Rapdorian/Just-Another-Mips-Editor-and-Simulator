@@ -29,21 +29,20 @@ pub fn execute(input: IdEx) -> ExMem {
     let alu_ctrl: u8;
     if input.alu_op & 0b11 == 0b10 {
         // get info from instruction funct
-        let f0 = input.op_funct & 0b1;
-        let f1 = (input.op_funct & 0b10) >> 1;
-        let f2 = (input.op_funct & 0b100) >> 2;
-        let f3 = (input.op_funct & 0b1000) >> 3;
-
-        // TODO: simplify this into a match
-        let ctrl0 = (f0 | f3) & 1;
-        let ctrl1 = (!f2) & 1;
-        let ctrl2 = (f1) & 1;
-
-        alu_ctrl = ctrl0 | (ctrl1 << 1) | (ctrl2 << 2);
+        alu_ctrl = match input.op_funct {
+            0x20 => ALU_ADD,
+            0x22 => ALU_SUB,
+            0x24 => ALU_AND,
+            0x2a => ALU_SLT,
+            0x25 => ALU_OR,
+            _ => {
+                panic!("Unkown Instruction")
+            }
+        };
     } else if input.alu_op & 0b11 == 0b00 {
-        alu_ctrl = 0b10;
+        alu_ctrl = ALU_ADD;
     } else {
-        alu_ctrl = 0b110;
+        alu_ctrl = ALU_SUB;
     }
 
     // Handle ALU operation
@@ -70,14 +69,21 @@ pub fn execute(input: IdEx) -> ExMem {
     }
 }
 
+/// ALU Controls
+const ALU_AND: u8 = 0b000;
+const ALU_OR: u8 = 0b001;
+const ALU_ADD: u8 = 0b010;
+const ALU_SUB: u8 = 0b110;
+const ALU_SLT: u8 = 0b111;
+
 /// Simple ALU implementation.
 pub fn alu(a: u32, b: u32, op: u8) -> u32 {
     match op {
-        0b000 => a & b,
-        0b001 => a | b,
-        0b010 => a + b,
-        0b110 => a - b,
-        0b111 => {
+        ALU_AND => a & b,
+        ALU_OR => a | b,
+        ALU_ADD => a + b,
+        ALU_SUB => a - b,
+        ALU_SLT => {
             if a < b {
                 1
             } else {
