@@ -35,44 +35,47 @@ fn run_instruction(pc: &mut u32, regs: &mut RegisterFile, mem: &mut Memory) {
 
 fn main() {
     let mut regs = RegisterFile::default();
-    let mut memory = Memory::new(1024);
-    let mut memory2 = Memory::new(1024);
-    let mut memory3 = Memory::new(1024);
-    let mut pc = 0;
 
     // Addition/ sw test
-    memory.write(0, 0x20080005);
-    memory.write(1, 0x20090002);
-    memory.write(2, 0x01285020);
-    memory.write(3, 0xad0a0000);
+    let mut memory = Memory::from_word_img(&[
+        0x20080010, // addi $t0, $zero, 16
+        0x20090004, // addi $t1, $zero, 4
+        0x01094820, // add $t1, $t0, $t1
+        0xad090000, // sw $t1, 0($t0)
+        0x00000000, // empty word to write to
+    ]);
 
     // Branch test program
-    memory2.write(0, 0x20080005);
-    memory2.write(1, 0x10000001);
-    memory2.write(2, 0x20080002);
-    memory2.write(3, 0x20080003);
-
+    let mut memory2 = Memory::from_word_img(&[
+        0x20080005, // addi $t0, $zero, 5
+        0x10000001, // beq $zero, $zero, 1
+        0x20080002, // addi $t0, $zero, 2
+        0x20080003, // adii $t0, $zero, 3
+    ]);
     // Operator test
-    memory3.write(0, 0x20080002);
-    memory3.write(1, 0x20090003);
-    //memory3.write(2, 0x01284824); // and
-    //memory3.write(2, 0x01284825); // or
-    //memory3.write(2, 0x01284822); // sub
-    memory3.write(2, 0x0128482a); //slt
+    let mut memory3 = Memory::from_word_img(&[
+        0x20080002, 0x20090003, // setup
+        //0x01284824, // and
+        //0x01284825, // or
+        //0x01284822, // sub
+        0x0128482a, //slt
+    ]);
 
+    let mut pc = 0;
     run_instruction(&mut pc, &mut regs, &mut memory3);
     run_instruction(&mut pc, &mut regs, &mut memory3);
     run_instruction(&mut pc, &mut regs, &mut memory3);
     println!("3 op 2 = {}", regs.read_register(register::T1));
 
     println!("{:?}", regs);
-    println!("mem[5] = {}", memory.read(5));
+    println!("mem[16] = {:?}", memory.read_word(16));
+    pc = 0;
     run_instruction(&mut pc, &mut regs, &mut memory);
     run_instruction(&mut pc, &mut regs, &mut memory);
     run_instruction(&mut pc, &mut regs, &mut memory);
     run_instruction(&mut pc, &mut regs, &mut memory);
     println!("{:?}", regs);
-    println!("mem[5] = {}", memory.read(5));
+    println!("mem[16] = {:?}", memory.read_word(16));
 
     println!("{:?}", regs);
     pc = 0;

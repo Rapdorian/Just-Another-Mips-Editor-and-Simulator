@@ -20,10 +20,12 @@ pub struct ExMem {
 pub fn memory(pc: &mut u32, memory: &mut Memory, input: ExMem) -> MemWb {
     let mut read_data = 0;
     if input.write {
-        memory.write(input.alu_result, input.write_data);
+        memory
+            .write_word(input.alu_result, input.write_data)
+            .unwrap();
     }
     if input.read {
-        read_data = memory.read(input.alu_result);
+        read_data = memory.read_word(input.alu_result).unwrap();
     }
 
     if input.branch && input.zero {
