@@ -66,7 +66,7 @@ pub fn execute(input: IdEx) -> ExMem {
         write_register: if input.reg_dst { input.rd } else { input.rt },
         reg_write: input.reg_write,
         branch: input.branch,
-        branch_pc: input.pc + (input.imm), //TODO: Once address are fixed this needs to left shifted
+        branch_pc: input.pc + (input.imm << 2),
     }
 }
 
