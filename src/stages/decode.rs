@@ -1,4 +1,7 @@
-use crate::{stages::execute::IdEx, Register, RegisterFile};
+use crate::{
+    stages::execute::{op_ctrl::*, IdEx},
+    Register, RegisterFile,
+};
 
 // Struct representing this stages inputs
 pub struct IfId {
@@ -53,7 +56,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             mem_write = false;
             branch = false;
-            alu_op = 0b10;
+            alu_op = OP_R;
         }
         0x23 => {
             // LW instruction
@@ -64,7 +67,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = true;
             mem_write = false;
             branch = false;
-            alu_op = 0;
+            alu_op = OP_ADD;
         }
         0x2b => {
             // SW instruction
@@ -75,7 +78,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             mem_write = true;
             branch = false;
-            alu_op = 0;
+            alu_op = OP_ADD;
         }
         0x8 => {
             // ADDI instruction
@@ -86,7 +89,31 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             mem_write = false;
             branch = false;
-            alu_op = 0;
+            alu_op = OP_ADD;
+        }
+
+        0xc => {
+            // ANDI instruction
+            reg_dst = false;
+            alu_src = true;
+            mem_to_reg = false;
+            reg_write = true;
+            mem_read = false;
+            mem_write = false;
+            branch = false;
+            alu_op = OP_AND;
+        }
+
+        0xd => {
+            // ORI instruction
+            reg_dst = false;
+            alu_src = true;
+            mem_to_reg = false;
+            reg_write = true;
+            mem_read = false;
+            mem_write = false;
+            branch = false;
+            alu_op = OP_OR;
         }
         0x4 => {
             // BEQ instruction
@@ -97,7 +124,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             mem_write = false;
             branch = true;
-            alu_op = 0b01;
+            alu_op = OP_SUB;
         }
         _ => {
             todo!("implement missing instruction")

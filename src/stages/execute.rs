@@ -24,31 +24,44 @@ pub struct IdEx {
     pub reg_write: bool,
 }
 
+pub mod op_ctrl {
+    pub const OP_R: u8 = 0;
+    pub const OP_AND: u8 = 1;
+    pub const OP_OR: u8 = 2;
+    pub const OP_ADD: u8 = 3;
+    pub const OP_SUB: u8 = 4;
+}
+use op_ctrl::*;
+
 /// Runs execute stage
 pub fn execute(input: IdEx) -> ExMem {
     // compute ALU control lines
-    let alu_ctrl: (bool, bool, u8);
-    if input.alu_op & 0b11 == 0b10 {
-        // get info from instruction funct
-        alu_ctrl = match input.op_funct {
-            0x20 => (false, false, ALU_ADD), // add
-            0x22 => (false, true, ALU_ADD),  // sub
-            0x24 => (false, false, ALU_AND), // and
-            0x2a => (false, true, ALU_SLT),  // slt
-            0x25 => (false, false, ALU_OR),  // or
-            0x27 => (true, true, ALU_AND),   // nor
-            0x00 => (false, false, ALU_SLL), // sll
-            0x02 => (false, false, ALU_SRL), // srl
-            0x03 => (false, false, ALU_SRA), // sra
-            _ => {
-                panic!("Unkown Instruction")
+    let alu_ctrl = match input.alu_op {
+        OP_R => {
+            // get info from instruction funct
+            match input.op_funct {
+                0x20 => (false, false, ALU_ADD), // add
+                0x22 => (false, true, ALU_ADD),  // sub
+                0x24 => (false, false, ALU_AND), // and
+                0x2a => (false, true, ALU_SLT),  // slt
+                0x25 => (false, false, ALU_OR),  // or
+                0x27 => (true, true, ALU_AND),   // nor
+                0x00 => (false, false, ALU_SLL), // sll
+                0x02 => (false, false, ALU_SRL), // srl
+                0x03 => (false, false, ALU_SRA), // sra
+                _ => {
+                    panic!("Unkown Instruction")
+                }
             }
-        };
-    } else if input.alu_op & 0b11 == 0b00 {
-        alu_ctrl = (false, false, ALU_ADD)
-    } else {
-        alu_ctrl = (false, false, ALU_ADD);
-    }
+        }
+        OP_ADD => (false, false, ALU_ADD),
+        OP_SUB => (false, true, ALU_ADD),
+        OP_AND => (false, false, ALU_AND),
+        OP_OR => (false, false, ALU_OR),
+        _ => {
+            panic!("Unknown Instruction")
+        }
+    };
 
     // Handle ALU operation
     let mut arg1 = input.reg_1;
@@ -85,14 +98,17 @@ pub fn execute(input: IdEx) -> ExMem {
     }
 }
 
-/// ALU Controls
-const ALU_AND: u8 = 0;
-const ALU_OR: u8 = 1;
-const ALU_ADD: u8 = 2;
-const ALU_SLT: u8 = 3;
-const ALU_SLL: u8 = 4;
-const ALU_SRL: u8 = 5;
-const ALU_SRA: u8 = 6;
+pub mod alu_signals {
+    //! ALU Controls
+    pub const ALU_AND: u8 = 0;
+    pub const ALU_OR: u8 = 1;
+    pub const ALU_ADD: u8 = 2;
+    pub const ALU_SLT: u8 = 3;
+    pub const ALU_SLL: u8 = 4;
+    pub const ALU_SRL: u8 = 5;
+    pub const ALU_SRA: u8 = 6;
+}
+use alu_signals::*;
 
 /// Simple ALU implementation.
 /// TODO: Handle carry flag
