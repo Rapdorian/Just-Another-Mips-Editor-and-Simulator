@@ -12,6 +12,7 @@ pub struct IdEx {
     pub reg_1: u32,
     pub reg_2: u32,
     pub imm: u32,
+    pub shamt: u32,
     pub rt: Register,
     pub rd: Register,
     // forwarded data
@@ -23,38 +24,65 @@ pub struct IdEx {
     pub reg_write: bool,
 }
 
+pub mod op_ctrl {
+    pub const OP_R: u8 = 0;
+    pub const OP_AND: u8 = 1;
+    pub const OP_OR: u8 = 2;
+    pub const OP_ADD: u8 = 3;
+    pub const OP_SUB: u8 = 4;
+}
+use op_ctrl::*;
+
 /// Runs execute stage
 pub fn execute(input: IdEx) -> ExMem {
     // compute ALU control lines
-    let alu_ctrl: u8;
-    if input.alu_op & 0b11 == 0b10 {
-        // get info from instruction funct
-        let f0 = input.op_funct & 0b1;
-        let f1 = (input.op_funct & 0b10) >> 1;
-        let f2 = (input.op_funct & 0b100) >> 2;
-        let f3 = (input.op_funct & 0b1000) >> 3;
-
-        // TODO: simplify this into a match
-        let ctrl0 = (f0 | f3) & 1;
-        let ctrl1 = (!f2) & 1;
-        let ctrl2 = (f1) & 1;
-
-        alu_ctrl = ctrl0 | (ctrl1 << 1) | (ctrl2 << 2);
-    } else if input.alu_op & 0b11 == 0b00 {
-        alu_ctrl = 0b10;
-    } else {
-        alu_ctrl = 0b110;
-    }
+    let alu_ctrl = match input.alu_op {
+        OP_R => {
+            // get info from instruction funct
+            match input.op_funct {
+                0x20 => (false, false, ALU_ADD), // add
+                0x22 => (false, true, ALU_ADD),  // sub
+                0x24 => (false, false, ALU_AND), // and
+                0x2a => (false, true, ALU_SLT),  // slt
+                0x25 => (false, false, ALU_OR),  // or
+                0x27 => (true, true, ALU_AND),   // nor
+                0x00 => (false, false, ALU_SLL), // sll
+                0x02 => (false, false, ALU_SRL), // srl
+                0x03 => (false, false, ALU_SRA), // sra
+                _ => {
+                    panic!("Unkown Instruction")
+                }
+            }
+        }
+        OP_ADD => (false, false, ALU_ADD),
+        OP_SUB => (false, true, ALU_ADD),
+        OP_AND => (false, false, ALU_AND),
+        OP_OR => (false, false, ALU_OR),
+        _ => {
+            panic!("Unknown Instruction")
+        }
+    };
 
     // Handle ALU operation
-    let arg1 = input.reg_1;
-    let arg2 = if input.alu_src {
+    let mut arg1 = input.reg_1;
+    let mut arg2 = if input.alu_src {
         input.imm
     } else {
         input.reg_2
     };
 
+    // check if we are using a shift operation.
+    // and load the shamt if so
+    match alu_ctrl.2 {
+        ALU_SLL | ALU_SRL | ALU_SRA => {
+            arg1 = arg2;
+            arg2 = input.shamt;
+        }
+        _ => {}
+    }
+
     let result = alu(arg1, arg2, alu_ctrl);
+    println!("{} {} = {}", arg1, arg2, result);
 
     ExMem {
         alu_result: result,
@@ -70,20 +98,45 @@ pub fn execute(input: IdEx) -> ExMem {
     }
 }
 
+pub mod alu_signals {
+    //! ALU Controls
+    pub const ALU_AND: u8 = 0;
+    pub const ALU_OR: u8 = 1;
+    pub const ALU_ADD: u8 = 2;
+    pub const ALU_SLT: u8 = 3;
+    pub const ALU_SLL: u8 = 4;
+    pub const ALU_SRL: u8 = 5;
+    pub const ALU_SRA: u8 = 6;
+}
+use alu_signals::*;
+
 /// Simple ALU implementation.
-pub fn alu(a: u32, b: u32, op: u8) -> u32 {
-    match op {
-        0b000 => a & b,
-        0b001 => a | b,
-        0b010 => a + b,
-        0b110 => a - b,
-        0b111 => {
+/// TODO: Handle carry flag
+pub fn alu(a: u32, b: u32, op: (bool, bool, u8)) -> u32 {
+    let a = if op.0 { !a } else { a };
+    let b = if op.1 { !b } else { b };
+
+    // this is a hack since we haven't implemented carry bits yet
+    let arith_a = if op.0 { a + 1 } else { a };
+    let arith_b = if op.1 { b + 1 } else { b };
+
+    match op.2 {
+        ALU_AND => a & b,
+        ALU_OR => a | b,
+        ALU_ADD => arith_a.overflowing_add(arith_b).0,
+        ALU_SLL => a.overflowing_shl(b).0,
+
+        // Rust uses signedness to select between logical and arithmetic right shifts
+        ALU_SRL => a.overflowing_shr(b).0,
+        ALU_SRA => (a as i32).overflowing_shr(b).0 as u32,
+
+        ALU_SLT => {
             if a < b {
                 1
             } else {
                 0
             }
         }
-        _ => todo!("Unknown instruction: {:b}", op),
+        _ => todo!("Unknown instruction: {:?}", op),
     }
 }
