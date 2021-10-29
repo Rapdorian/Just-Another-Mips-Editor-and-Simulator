@@ -112,6 +112,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
         reg_1: read_rs,
         reg_2: read_rt,
         imm,
+        shamt,
         rt,
         rd,
         mem_write,

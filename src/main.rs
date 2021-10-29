@@ -53,12 +53,17 @@ fn main() {
         0x20080003, // adii $t0, $zero, 3
     ]);
     // Operator test
+    regs.write_register(T3, (-12_i32) as u32); // we can't properly load negative nums yet
     let mut memory3 = Memory::from_word_img(&[
-        0x20080002, 0x20090003, // setup
+        0x20080002, 0x2009000c, // setup
         //0x01284824, // and
         //0x01284825, // or
         //0x01284822, // sub
-        0x0128482a, //slt
+        //0x0128482a, // slt
+        //0x01284827, // nor
+        //0x00094880, // sll $t1, $t1, 2
+        //0x000b4882, // srl $t1, $t3, 2
+        0x000b4883, // sra $t1, $t3, 2
     ]);
 
     let mut pc = 0;
