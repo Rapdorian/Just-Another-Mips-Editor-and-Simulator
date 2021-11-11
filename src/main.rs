@@ -1,5 +1,6 @@
 mod memory;
 mod register;
+mod syscall;
 
 pub mod stages {
     pub mod writeback;
@@ -30,7 +31,12 @@ fn run_instruction(pc: &mut u32, regs: &mut RegisterFile, mem: &mut Memory) {
     let id_ex = stages::decode(regs, if_id);
     let ex_mem = stages::execute(id_ex);
     let mem_wb = stages::memory(pc, mem, ex_mem);
-    stages::writeback(regs, mem_wb);
+    let pipe_out = stages::writeback(regs, mem_wb);
+
+    // pretend we jumped to the syscall vector
+    if pipe_out.syscall {
+        syscall::handle_syscall(regs, mem).unwrap();
+    }
 }
 
 fn main() {
@@ -68,7 +74,25 @@ fn main() {
         0x35290004, // ori $t1, $t1, 4
     ]);
 
+    // io test
+    let mut memory4 = Memory::from_word_img(&[
+        0x20020005, // addi $v0, $zer0, 5
+        0x0000000c, // syscall
+        0x00422020, // add $a0, $v0, $v0
+        0x20020001, // addi $v0, $zero, 1
+        0x0000000c, // syscall
+    ]);
+
     let mut pc = 0;
+
+    run_instruction(&mut pc, &mut regs, &mut memory4);
+    run_instruction(&mut pc, &mut regs, &mut memory4);
+    run_instruction(&mut pc, &mut regs, &mut memory4);
+    run_instruction(&mut pc, &mut regs, &mut memory4);
+    run_instruction(&mut pc, &mut regs, &mut memory4);
+    return;
+
+    pc = 0;
     run_instruction(&mut pc, &mut regs, &mut memory3);
     run_instruction(&mut pc, &mut regs, &mut memory3);
     run_instruction(&mut pc, &mut regs, &mut memory3);

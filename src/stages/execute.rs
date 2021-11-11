@@ -35,6 +35,7 @@ use op_ctrl::*;
 
 /// Runs execute stage
 pub fn execute(input: IdEx) -> ExMem {
+    let mut syscall = false;
     // compute ALU control lines
     let alu_ctrl = match input.alu_op {
         OP_R => {
@@ -49,6 +50,10 @@ pub fn execute(input: IdEx) -> ExMem {
                 0x00 => (false, false, ALU_SLL), // sll
                 0x02 => (false, false, ALU_SRL), // srl
                 0x03 => (false, false, ALU_SRA), // sra
+                0x0c => {
+                    syscall = true;
+                    (false, false, ALU_ADD)
+                }
                 _ => {
                     panic!("Unkown Instruction")
                 }
@@ -82,7 +87,6 @@ pub fn execute(input: IdEx) -> ExMem {
     }
 
     let result = alu(arg1, arg2, alu_ctrl);
-    println!("{} {} = {}", arg1, arg2, result);
 
     ExMem {
         alu_result: result,
@@ -95,6 +99,7 @@ pub fn execute(input: IdEx) -> ExMem {
         reg_write: input.reg_write,
         branch: input.branch,
         branch_pc: input.pc + (input.imm << 2),
+        syscall,
     }
 }
 

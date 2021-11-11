@@ -15,6 +15,7 @@ pub struct ExMem {
     pub mem_to_reg: bool,
     pub write_register: Register,
     pub reg_write: bool,
+    pub syscall: bool,
 }
 
 pub fn memory(pc: &mut u32, memory: &mut Memory, input: ExMem) -> MemWb {
@@ -38,5 +39,6 @@ pub fn memory(pc: &mut u32, memory: &mut Memory, input: ExMem) -> MemWb {
         alu_data: input.alu_result,
         write_register: input.write_register,
         reg_write: input.reg_write,
+        syscall: input.syscall,
     }
 }
