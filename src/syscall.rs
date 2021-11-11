@@ -37,6 +37,10 @@ pub fn handle_syscall(reg_file: &mut RegisterFile, mem: &mut Memory) -> Result<(
                 as u32;
             reg_file.write_register(V0, val);
         }
+        10 => {
+            std::process::exit(0);
+        }
+
         11 => {
             // print char
             let arg = reg_file.read_register(A0);
