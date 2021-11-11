@@ -1,4 +1,3 @@
-use std::mem;
 use thiserror::Error;
 
 /// Memory error struct
@@ -24,6 +23,11 @@ impl Memory {
     /// Creates a new memory region from an array
     pub fn from_img<const SIZE: usize>(img: &[u8; SIZE]) -> Self {
         Self { data: img.to_vec() }
+    }
+
+    // Creates a new memory region from a vec
+    pub fn from_vec(img: Vec<u8>) -> Self {
+        Self { data: img }
     }
 
     /// Creates a new memory region from an array of words
