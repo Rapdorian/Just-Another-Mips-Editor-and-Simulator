@@ -1,8 +1,9 @@
+use super::memory::ExMem;
+use crate::pipeline::ForwardingUnit;
 use crate::Register;
 
-use super::memory::ExMem;
-
 /// Struct representing this stages input
+#[derive(Default, Clone)]
 pub struct IdEx {
     // stage data
     pub alu_src: bool,
@@ -22,6 +23,7 @@ pub struct IdEx {
     pub mem_read: bool,
     pub mem_to_reg: bool,
     pub reg_write: bool,
+    pub rs: Register,
 }
 
 pub mod op_ctrl {
@@ -34,7 +36,7 @@ pub mod op_ctrl {
 use op_ctrl::*;
 
 /// Runs execute stage
-pub fn execute(input: IdEx) -> ExMem {
+pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
     let mut syscall = false;
     // compute ALU control lines
     let alu_ctrl = match input.alu_op {
@@ -55,7 +57,7 @@ pub fn execute(input: IdEx) -> ExMem {
                     (false, false, ALU_ADD)
                 }
                 _ => {
-                    panic!("Unkown Instruction")
+                    panic!("Unkown funct: {}", input.op_funct)
                 }
             }
         }
@@ -70,11 +72,27 @@ pub fn execute(input: IdEx) -> ExMem {
 
     // Handle ALU operation
     let mut arg1 = input.reg_1;
-    let mut arg2 = if input.alu_src {
-        input.imm
-    } else {
-        input.reg_2
-    };
+    let mut arg2 = input.reg_2;
+
+    // check forwarding unit on first register
+    if fwd_unit.mem_wb.0 && input.rs == fwd_unit.mem_wb.1 {
+        arg1 = fwd_unit.mem_wb.2;
+    }
+    if fwd_unit.ex_mem.0 && input.rs == fwd_unit.ex_mem.1 {
+        arg1 = fwd_unit.ex_mem.2;
+    }
+
+    // check forwarding unit on second register
+    if fwd_unit.mem_wb.0 && input.rt == fwd_unit.mem_wb.1 {
+        arg2 = fwd_unit.mem_wb.2;
+    }
+    if fwd_unit.ex_mem.0 && input.rt == fwd_unit.ex_mem.1 {
+        arg2 = fwd_unit.ex_mem.2;
+    }
+
+    if input.alu_src {
+        arg2 = input.imm;
+    }
 
     // check if we are using a shift operation.
     // and load the shamt if so
@@ -118,6 +136,8 @@ use alu_signals::*;
 /// Simple ALU implementation.
 /// TODO: Handle carry flag
 pub fn alu(a: u32, b: u32, op: (bool, bool, u8)) -> u32 {
+    //println!("{} op {}", a, b);
+
     let a = if op.0 { !a } else { a };
     let b = if op.1 { !b } else { b };
 

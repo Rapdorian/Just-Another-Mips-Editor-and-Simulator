@@ -4,6 +4,7 @@ use crate::{
 };
 
 // Struct representing this stages inputs
+#[derive(Default, Clone)]
 pub struct IfId {
     pub instruction: u32,
     pub pc: u32,
@@ -127,7 +128,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             alu_op = OP_SUB;
         }
         _ => {
-            todo!("implement missing instruction")
+            todo!("implement missing instruction: 0x{:x}", op)
         }
     }
 
@@ -141,6 +142,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
         imm,
         shamt,
         rt,
+        rs,
         rd,
         mem_write,
         mem_read,

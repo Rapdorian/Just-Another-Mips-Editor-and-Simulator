@@ -18,6 +18,13 @@ pub mod stages {
 
     pub mod fetch;
     pub use fetch::fetch;
+
+    pub mod inputs {
+        pub use super::decode::IfId;
+        pub use super::execute::IdEx;
+        pub use super::memory::ExMem;
+        pub use super::writeback::MemWb;
+    }
 }
 
 use anyhow::{Context, Result};
@@ -26,6 +33,7 @@ pub use memory::*;
 pub use register::*;
 use std::fs::File;
 use std::io::Read;
+use pipeline::PipelineState;
 
 fn main() {
     if let Err(e) = run() {
@@ -43,10 +51,18 @@ fn run() -> Result<()> {
                 .help("Sets the mips image file to use")
                 .required(true),
         )
+        .arg(
+            Arg::with_name("single_cycle")
+                .short("1")
+                .long("single-cycle")
+                .takes_value(false)
+                .help("Tells the machine to run in single cycle mode instead of pipelined")
+        )
         .get_matches();
 
     // create and run image
     let img_path = matches.value_of("INPUT").context("INPUT required")?;
+    let single_cycle = matches.is_present("single_cycle");
 
     let mut file = File::open(img_path)?;
     let mut mem = vec![];
@@ -58,8 +74,14 @@ fn run() -> Result<()> {
     let mut regs = RegisterFile::default();
 
     // check PC is in bounds
+    let mut state = PipelineState::default();
     loop {
+        if single_cycle {
         pipeline::single_cycle(&mut pc, &mut regs, &mut mem);
+        }else{
+            state = pipeline::pipe_cycle(&mut pc, &mut regs, &mut mem, state);
+        }
+        //println!("{:?}", regs);
     }
 }
 
