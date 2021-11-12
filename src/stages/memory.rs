@@ -2,6 +2,7 @@ use super::writeback::MemWb;
 use crate::{Memory, Register};
 
 /// Struct representing this stages input
+#[derive(Default)]
 pub struct ExMem {
     // stage data
     pub alu_result: u32,

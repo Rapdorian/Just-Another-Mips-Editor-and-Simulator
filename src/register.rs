@@ -1,5 +1,5 @@
 /// List of registers
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub struct Register(u32);
 
 /// Constants representing each register

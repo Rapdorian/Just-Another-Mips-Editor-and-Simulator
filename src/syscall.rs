@@ -66,7 +66,7 @@ pub fn handle_syscall(reg_file: &mut RegisterFile, mem: &mut Memory) -> Result<(
             let arg = reg_file.read_register(A0);
             print!("{}", arg);
         }
-        _ => {}
+        _ => {eprintln!("Unrecognized syscall: {}", v0)}
     }
     Ok(())
 }
