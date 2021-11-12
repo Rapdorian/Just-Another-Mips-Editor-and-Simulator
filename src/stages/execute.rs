@@ -3,7 +3,7 @@ use crate::pipeline::ForwardingUnit;
 use crate::Register;
 
 /// Struct representing this stages input
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct IdEx {
     // stage data
     pub alu_src: bool,

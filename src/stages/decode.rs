@@ -4,7 +4,7 @@ use crate::{
 };
 
 // Struct representing this stages inputs
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct IfId {
     pub instruction: u32,
     pub pc: u32,
@@ -35,7 +35,6 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
     // read rs and rt
     let read_rs = reg_file.read_register(rs);
     let read_rt = reg_file.read_register(rt);
-
 
     // handle controls
     let reg_dst;
