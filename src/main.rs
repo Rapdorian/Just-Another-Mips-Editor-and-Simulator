@@ -1,4 +1,5 @@
 mod memory;
+mod parser;
 mod pipeline;
 mod register;
 mod syscall;
@@ -30,12 +31,32 @@ pub mod stages {
 use anyhow::{Context, Result};
 use clap::{App, Arg};
 pub use memory::*;
+use parser::compute_labels;
 pub use register::*;
 use std::fs::File;
-use std::io::Read;
+use std::io::{self, BufRead, Read};
 use pipeline::PipelineState;
+use crate::parser::model::Line;
 
 fn main() {
+    // test parse
+    let lines = io::BufReader::new(io::stdin()).lines();
+    for line in lines {
+        let line = line.unwrap();
+        let (_, lines) = parser::parse_string(&line).unwrap();
+        let labels = compute_labels(&lines);
+        for line in lines {
+            match line {
+                Line::Instruction(ins) => {
+                    for ins in ins {
+                        print!("{:X}, ", ins.asm(&labels));
+                    }
+                    print!("\n");
+                }
+                Line::Label(label) => println!("{}:", label),
+            }
+        }
+    }
     if let Err(e) = run() {
         eprintln!("ERROR: {}", e);
     }
