@@ -4,7 +4,7 @@ use crate::{
 };
 
 // Struct representing this stages inputs
-#[derive(Default, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct IfId {
     pub instruction: u32,
     pub pc: u32,
@@ -45,10 +45,12 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
     let mem_read;
     let alu_op;
     let branch;
+    let mut syscall = false;
 
     // This is where instructions are defined
     match op {
         0 => {
+            syscall = funct == 0x0c;
             // R-type instruction
             reg_dst = true;
             alu_src = false;
@@ -150,5 +152,6 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
         reg_write,
         branch,
         pc: input.pc,
+        syscall,
     }
 }

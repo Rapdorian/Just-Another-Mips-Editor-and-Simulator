@@ -1,8 +1,7 @@
-use crate::{Register, RegisterFile, A0, V0};
-use std::io;
+use crate::{Register, RegisterFile};
 
 /// struct representing this structs input
-#[derive(Default, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct MemWb {
     pub mem_to_reg: bool,
     pub mem_data: u32,

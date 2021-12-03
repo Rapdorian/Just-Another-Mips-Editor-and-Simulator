@@ -5,6 +5,8 @@ use thiserror::Error;
 pub enum MemoryError {
     #[error("Unaligned memory access on {addr}, expected address to be aligned to {align} byte")]
     UnalignedAccess { addr: u32, align: u32 },
+    #[error("Index out of bounds: {index}, len is {len}")]
+    OutOfBounds { index: u32, len: usize },
 }
 
 /// Handles memory
@@ -30,6 +32,15 @@ impl Memory {
         Self { data: img }
     }
 
+    // Create a new memory region from a word vec
+    pub fn from_word_vec(word_img: Vec<u32>) -> Self {
+        let mut img = Vec::with_capacity(word_img.len() * 4);
+        for word in word_img {
+            img.extend_from_slice(&word.to_le_bytes());
+        }
+        Self { data: img }
+    }
+
     /// Creates a new memory region from an array of words
     pub fn from_word_img<const SIZE: usize>(word_img: &[u32; SIZE]) -> Self {
         let mut img = Vec::with_capacity(SIZE * 4);
@@ -41,7 +52,13 @@ impl Memory {
 
     /// Read a byte from memory
     pub fn read(&self, address: u32) -> Result<u8, MemoryError> {
-        Ok(self.data[address as usize])
+        Ok(*self
+            .data
+            .get(address as usize)
+            .ok_or(MemoryError::OutOfBounds {
+                index: address,
+                len: self.data.len(),
+            })?)
     }
 
     /// Read an aligned halfword from memory

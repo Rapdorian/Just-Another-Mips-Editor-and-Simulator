@@ -173,8 +173,22 @@ fn li_ins(input: &str) -> IResult<&str, Vec<Instruction>> {
     )(input)
 }
 
+pub fn syscall(input: &str) -> IResult<&str, Vec<Instruction>> {
+    let (input, _) = delimited(multispace0, tag("syscall"), multispace0)(input)?;
+    Ok((
+        input,
+        vec![Instruction::R {
+            op: Opcode::Funct(0x0c),
+            rd: ZERO,
+            rs: ZERO,
+            rt: ZERO,
+            shamt: 0,
+        }],
+    ))
+}
+
 pub fn instruction(input: &str) -> IResult<&str, Line> {
-    map(alt((r_type, i_type, move_ins, li_ins)), |x| {
+    map(alt((r_type, i_type, move_ins, li_ins, syscall)), |x| {
         Line::Instruction(x)
     })(input)
 }
