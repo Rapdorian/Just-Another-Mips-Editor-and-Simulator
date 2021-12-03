@@ -3,6 +3,7 @@ use nom::{
     bytes::complete::{tag, take_till},
     character::complete::{alphanumeric1, multispace0},
     combinator::{map, map_res, opt},
+    multi::many1,
     sequence::{delimited, preceded, tuple},
     IResult,
 };
@@ -119,12 +120,13 @@ fn li_ins(input: &str) -> IResult<&str, Vec<Instruction>> {
         ),
         |(reg, imm)| match imm {
             Imm::Label(ref name) => vec![
-                Instruction::I {
-                    op: Opcode::Op(0x0f),
-                    rt: AT,
-                    rs: ZERO,
-                    imm: Imm::HighHWord(name.clone()),
-                },
+                // TODO: Make loads >16bits work
+                // Instruction::I {
+                //     op: Opcode::Op(0x0f),
+                //     rt: AT,
+                //     rs: ZERO,
+                //     imm: Imm::HighHWord(name.clone()),
+                // },
                 Instruction::I {
                     op: Opcode::Op(0x0d),
                     rt: reg,
@@ -187,8 +189,54 @@ pub fn syscall(input: &str) -> IResult<&str, Vec<Instruction>> {
     ))
 }
 
+pub fn word_lit(input: &str) -> IResult<&str, Vec<Instruction>> {
+    preceded(
+        tag(".word"),
+        many1(map(
+            delimited(multispace0, parser::int, opt(tag(","))),
+            |i: i64| Instruction::Literal { data: i as u32 },
+        )),
+    )(input)
+}
+
+pub fn ascii_lit(input: &str) -> IResult<&str, Vec<Instruction>> {
+    preceded(
+        tag(".ascii"),
+        delimited(
+            multispace0,
+            map(
+                delimited(tag("\""), take_till(|c: char| c == '"'), tag("\"")),
+                |s: &str| {
+                    // escape stuff
+                    let s = s.replace("\\n", "\n");
+                    let s = s.replace("\\0", "\0");
+                    // convert to bytes
+                    let bytes = s.as_bytes();
+                    let mut words = vec![];
+                    while words.len() * 4 < bytes.len() {
+                        let i = words.len() * 4;
+                        words.push(Instruction::Literal {
+                            data: u32::from_ne_bytes([
+                                *bytes.get(i).unwrap_or(&0),
+                                *bytes.get(i + 1).unwrap_or(&0),
+                                *bytes.get(i + 2).unwrap_or(&0),
+                                *bytes.get(i + 3).unwrap_or(&0),
+                            ]),
+                        });
+                    }
+                    words
+                },
+            ),
+            opt(tag(",")),
+        ),
+    )(input)
+}
+
 pub fn instruction(input: &str) -> IResult<&str, Line> {
-    map(alt((r_type, i_type, move_ins, li_ins, syscall)), |x| {
-        Line::Instruction(x)
-    })(input)
+    map(
+        alt((
+            r_type, i_type, move_ins, li_ins, syscall, word_lit, ascii_lit,
+        )),
+        |x| Line::Instruction(x),
+    )(input)
 }

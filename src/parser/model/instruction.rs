@@ -47,6 +47,9 @@ pub enum Instruction {
         op: Opcode,
         addr: Symbol,
     },
+    Literal {
+        data: u32,
+    },
 }
 
 fn field(x: u32, start: u32, width: u32) -> u32 {
@@ -75,6 +78,7 @@ impl Instruction {
                     | field(rt.value(), 16, 5)
                     | field(rs.value(), 21, 5)
             }
+            Instruction::Literal { data } => *data,
             Instruction::J { op, addr } => todo!("J instructions are not supported"),
         }
     }

@@ -39,7 +39,9 @@ pub fn parse_line(input: &str) -> IResult<&str, Line> {
 pub fn parse_string(input: &str) -> Result<Vec<Line>, nom::error::Error<String>> {
     match many0(parse_line)(input).finish() {
         Ok((rem, output)) => {
-            println!("Unparsed remainder: {}", rem);
+            if rem.trim().len() != 0 {
+                eprintln!("Unparsed remainder: {}", rem);
+            }
             Ok(output)
         }
         Err(e) => Err(nom::error::Error {
