@@ -9,7 +9,7 @@ pub fn fetch(pc: &mut u32, mem: &mut Memory) -> IfId {
             pc: *pc,
         }
     } else {
-        eprintln!("Failed to read instruction at address: {}", pc);
+        //eprintln!("Failed to read instruction at address: {}", pc);
         IfId {
             instruction: 0,
             pc: *pc,

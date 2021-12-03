@@ -47,7 +47,7 @@ pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
                 0x20 => (false, false, ALU_ADD), // add
                 0x22 => (false, true, ALU_ADD),  // sub
                 0x24 => (false, false, ALU_AND), // and
-                0x2a => (false, true, ALU_SLT),  // slt
+                0x2a => (false, false, ALU_SLT), // slt
                 0x25 => (false, false, ALU_OR),  // or
                 0x27 => (true, true, ALU_AND),   // nor
                 0x00 => (false, false, ALU_SLL), // sll

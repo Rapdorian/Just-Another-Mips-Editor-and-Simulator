@@ -38,7 +38,10 @@ pub fn parse_line(input: &str) -> IResult<&str, Line> {
 
 pub fn parse_string(input: &str) -> Result<Vec<Line>, nom::error::Error<String>> {
     match many0(parse_line)(input).finish() {
-        Ok((_, output)) => Ok(output),
+        Ok((rem, output)) => {
+            println!("Unparsed remainder: {}", rem);
+            Ok(output)
+        }
         Err(e) => Err(nom::error::Error {
             //Ugly hack to I don't have to borrow input statically
             input: e.input.to_string(),

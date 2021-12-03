@@ -25,6 +25,7 @@ pub fn opcode(input: &str) -> IResult<&str, Opcode> {
             "lw" => Ok(Opcode::Op(0x23)),
             "sw" => Ok(Opcode::Op(0x2b)),
             "lui" => Ok(Opcode::Op(0x0f)),
+            "slt" => Ok(Opcode::Funct(0x2a)),
             _ => Err(ParseError::UnknownInstruction(name.to_string())),
         },
     )(input)
