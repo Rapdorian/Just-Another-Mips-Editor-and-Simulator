@@ -3,7 +3,7 @@ use crate::pipeline::ForwardingUnit;
 use crate::Register;
 
 /// Struct representing this stages input
-#[derive(Default, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct IdEx {
     // stage data
     pub alu_src: bool,
@@ -16,6 +16,7 @@ pub struct IdEx {
     pub shamt: u32,
     pub rt: Register,
     pub rd: Register,
+    pub syscall: bool,
     // forwarded data
     pub branch: bool,
     pub pc: u32,
@@ -37,7 +38,7 @@ use op_ctrl::*;
 
 /// Runs execute stage
 pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
-    let mut syscall = false;
+    let syscall = input.syscall;
     // compute ALU control lines
     let alu_ctrl = match input.alu_op {
         OP_R => {
@@ -46,16 +47,13 @@ pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
                 0x20 => (false, false, ALU_ADD), // add
                 0x22 => (false, true, ALU_ADD),  // sub
                 0x24 => (false, false, ALU_AND), // and
-                0x2a => (false, true, ALU_SLT),  // slt
+                0x2a => (false, false, ALU_SLT), // slt
                 0x25 => (false, false, ALU_OR),  // or
                 0x27 => (true, true, ALU_AND),   // nor
                 0x00 => (false, false, ALU_SLL), // sll
                 0x02 => (false, false, ALU_SRL), // srl
                 0x03 => (false, false, ALU_SRA), // sra
-                0x0c => {
-                    syscall = true;
-                    (false, false, ALU_ADD)
-                }
+                0x0c => (false, false, ALU_ADD), // syscall
                 _ => {
                     panic!("Unkown funct: {}", input.op_funct)
                 }
@@ -136,7 +134,7 @@ use alu_signals::*;
 /// Simple ALU implementation.
 /// TODO: Handle carry flag
 pub fn alu(a: u32, b: u32, op: (bool, bool, u8)) -> u32 {
-    //println!("{} op {}", a, b);
+    //println!("{} {} {:?}", a, b, op);
 
     let a = if op.0 { !a } else { a };
     let b = if op.1 { !b } else { b };

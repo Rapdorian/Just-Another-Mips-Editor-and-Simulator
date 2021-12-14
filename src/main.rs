@@ -1,4 +1,5 @@
 mod memory;
+mod parser;
 mod pipeline;
 mod register;
 mod syscall;
@@ -27,13 +28,16 @@ pub mod stages {
     }
 }
 
+use crate::parser::model::Line;
 use anyhow::{Context, Result};
 use clap::{App, Arg};
 pub use memory::*;
-pub use register::*;
-use std::fs::File;
-use std::io::Read;
+use parser::compute_labels;
 use pipeline::PipelineState;
+pub use register::*;
+use std::fs::{self, File};
+use std::io::{self, BufRead, Read};
+use std::mem;
 
 fn main() {
     if let Err(e) = run() {
@@ -56,7 +60,7 @@ fn run() -> Result<()> {
                 .short("1")
                 .long("single-cycle")
                 .takes_value(false)
-                .help("Tells the machine to run in single cycle mode instead of pipelined")
+                .help("Tells the machine to run in single cycle mode instead of pipelined"),
         )
         .get_matches();
 
@@ -64,21 +68,35 @@ fn run() -> Result<()> {
     let img_path = matches.value_of("INPUT").context("INPUT required")?;
     let single_cycle = matches.is_present("single_cycle");
 
-    let mut file = File::open(img_path)?;
+    // read file as string
     let mut mem = vec![];
-    file.read_to_end(&mut mem)?;
-    let mut mem = Memory::from_vec(mem);
+
+    let script = fs::read_to_string(img_path)?;
+    let lines = parser::parse_string(&script)?;
+    let labels = compute_labels(&lines);
+
+    for line in &lines {
+        match line {
+            Line::Instruction(ins) => {
+                for word in ins {
+                    mem.push(word.asm(&labels));
+                }
+            }
+            Line::Label(_) => {}
+        }
+    }
+
+    let mut mem = Memory::from_word_vec(mem);
 
     // instantiate machine
     let mut pc = 0;
     let mut regs = RegisterFile::default();
 
-    // check PC is in bounds
     let mut state = PipelineState::default();
     loop {
         if single_cycle {
-        pipeline::single_cycle(&mut pc, &mut regs, &mut mem);
-        }else{
+            pipeline::single_cycle(&mut pc, &mut regs, &mut mem);
+        } else {
             state = pipeline::pipe_cycle(&mut pc, &mut regs, &mut mem, state);
         }
         //println!("{:?}", regs);
