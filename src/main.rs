@@ -62,11 +62,19 @@ fn run() -> Result<()> {
                 .takes_value(false)
                 .help("Tells the machine to run in single cycle mode instead of pipelined"),
         )
+        .arg(
+            Arg::with_name("debug")
+                .short("d")
+                .long("debug")
+                .takes_value(false)
+                .help("Displays what instruction is in each stage of the pipeline"),
+        )
         .get_matches();
 
     // create and run image
     let img_path = matches.value_of("INPUT").context("INPUT required")?;
     let single_cycle = matches.is_present("single_cycle");
+    let debug = matches.is_present("debug");
 
     // read file as string
     let mut mem = vec![];
@@ -98,6 +106,19 @@ fn run() -> Result<()> {
             pipeline::single_cycle(&mut pc, &mut regs, &mut mem);
         } else {
             state = pipeline::pipe_cycle(&mut pc, &mut regs, &mut mem, state);
+
+            if debug {
+                // display state
+                println!("Fetch     Decode    Execute   Memory    Writeback");
+                println!(
+                    "{:08X}  {:08X}  {:08X}  {:08X}  {:08X}\n",
+                    state.if_id.instruction,
+                    state.id_ex.instruction,
+                    state.ex_mem.instruction,
+                    state.mem_wb.instruction,
+                    state.pipe_out.instruction,
+                );
+            }
         }
         //println!("{:?}", regs);
     }

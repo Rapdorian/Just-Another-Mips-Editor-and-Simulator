@@ -1,6 +1,7 @@
 use crate::stages;
 use crate::stages::execute::IdEx;
 use crate::stages::inputs::*;
+use crate::stages::writeback::PipelineOutput;
 use crate::syscall::handle_syscall;
 use crate::{Memory, Register, RegisterFile, ZERO};
 
@@ -29,10 +30,11 @@ pub fn single_cycle(pc: &mut u32, regs: &mut RegisterFile, mem: &mut Memory) {
 
 #[derive(Default, Debug)]
 pub struct PipelineState {
-    if_id: IfId,
-    id_ex: IdEx,
-    ex_mem: ExMem,
-    mem_wb: MemWb,
+    pub if_id: IfId,
+    pub id_ex: IdEx,
+    pub ex_mem: ExMem,
+    pub mem_wb: MemWb,
+    pub pipe_out: PipelineOutput,
 }
 
 #[derive(Clone, Copy)]
@@ -73,6 +75,7 @@ pub fn pipe_cycle(
         // stall in case of syscall
         // TODO: Maybe not the best solution but ¯\_(ツ)_/¯
         return PipelineState {
+            pipe_out,
             mem_wb: MemWb::default(),
             ..state
         };
@@ -88,6 +91,7 @@ pub fn pipe_cycle(
             id_ex: IdEx::default(),
             ex_mem,
             mem_wb,
+            pipe_out,
         };
     }
     let id_ex = stages::decode(regs, state.if_id.clone());
@@ -99,6 +103,7 @@ pub fn pipe_cycle(
                 id_ex: IdEx::default(),
                 ex_mem,
                 mem_wb,
+                pipe_out,
             };
         }
         if state.id_ex.rt == id_ex.rt {
@@ -107,6 +112,7 @@ pub fn pipe_cycle(
                 id_ex: IdEx::default(),
                 ex_mem,
                 mem_wb,
+                pipe_out,
             };
         }
     }
@@ -118,5 +124,6 @@ pub fn pipe_cycle(
         id_ex,
         ex_mem,
         mem_wb,
+        pipe_out,
     }
 }

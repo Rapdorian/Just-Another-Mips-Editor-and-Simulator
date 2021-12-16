@@ -25,6 +25,9 @@ pub struct IdEx {
     pub mem_to_reg: bool,
     pub reg_write: bool,
     pub rs: Register,
+
+    // demo thing
+    pub instruction: u32,
 }
 
 pub mod op_ctrl {
@@ -116,6 +119,7 @@ pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
         branch: input.branch,
         branch_pc: input.pc + (input.imm << 2),
         syscall,
+        instruction: input.instruction,
     }
 }
 

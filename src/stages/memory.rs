@@ -17,6 +17,9 @@ pub struct ExMem {
     pub write_register: Register,
     pub reg_write: bool,
     pub syscall: bool,
+
+    // demo thing
+    pub instruction: u32,
 }
 
 pub fn memory(pc: &mut u32, memory: &mut Memory, input: ExMem) -> MemWb {
@@ -41,5 +44,6 @@ pub fn memory(pc: &mut u32, memory: &mut Memory, input: ExMem) -> MemWb {
         write_register: input.write_register,
         reg_write: input.reg_write,
         syscall: input.syscall,
+        instruction: input.instruction,
     }
 }

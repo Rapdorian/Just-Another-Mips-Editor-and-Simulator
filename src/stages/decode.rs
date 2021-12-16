@@ -153,5 +153,6 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
         branch,
         pc: input.pc,
         syscall,
+        instruction: input.instruction,
     }
 }
