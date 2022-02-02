@@ -43,6 +43,10 @@ pub struct ForwardingUnit {
     pub mem_wb: (bool, Register, u32),
 }
 
+/// Steps the machine forward in a pipelined manner.
+///
+/// Returns the current state of all pipeline stages after stepping the machine forward 1 stage.
+/// Pass that state back into this function to continue stepping the machine forward
 pub fn pipe_cycle(
     pc: &mut u32,
     regs: &mut RegisterFile,
@@ -85,6 +89,8 @@ pub fn pipe_cycle(
 
     let ex_mem = stages::execute(state.id_ex.clone(), fwd_unit);
 
+    // stall in case of syscall
+    // TODO: Maybe not the best solution but ¯\_(ツ)_/¯
     if ex_mem.syscall || mem_wb.syscall {
         return PipelineState {
             if_id: state.if_id,

@@ -91,6 +91,7 @@ pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
         arg2 = fwd_unit.ex_mem.2;
     }
 
+    // Handle immediate arguments
     if input.alu_src {
         arg2 = input.imm;
     }

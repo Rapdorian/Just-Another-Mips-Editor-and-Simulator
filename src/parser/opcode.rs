@@ -7,6 +7,7 @@ pub fn opcode(input: &str) -> IResult<&str, Opcode> {
         take_till(|c: char| c.is_whitespace()),
         |name: &str| match name.to_lowercase().trim() {
             "add" => Ok(Opcode::Funct(0x20)),
+            "sub" => Ok(Opcode::Funct(0x22)),
             "addi" => Ok(Opcode::Op(0x08)),
             "addiu" => Ok(Opcode::Op(0x09)),
             "addu" => Ok(Opcode::Funct(0x21)),

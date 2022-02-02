@@ -22,8 +22,11 @@ pub struct ExMem {
     pub instruction: u32,
 }
 
+/// Memory access pipeline stage
 pub fn memory(pc: &mut u32, memory: &mut Memory, input: ExMem) -> MemWb {
     let mut read_data = 0;
+
+    // handle memory accesses
     if input.write {
         memory
             .write_word(input.alu_result, input.write_data)
@@ -34,6 +37,7 @@ pub fn memory(pc: &mut u32, memory: &mut Memory, input: ExMem) -> MemWb {
     }
 
     if input.branch && input.zero {
+        // branch to PC copmuted in execute stage
         *pc = input.branch_pc;
     }
 
