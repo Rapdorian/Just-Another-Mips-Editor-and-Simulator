@@ -11,13 +11,14 @@ crate-type = ["cdylib", "rlib"]
 serde = { version = "1", features = ["derive"]}
 
 [dependencies]
-futures = "0.3.17"
+futures = "0.3.19"
 thiserror = "1.0.29"
 anyhow = "1.0.45"
 clap = "2.33.3"
 nom = "7.1.0"
 num = "0.4.0"
 eframe = "0.16.0"
+rfd = "0.7.0"
 
 [features]
 default = ["persistence"]

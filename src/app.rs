@@ -1,7 +1,11 @@
+use std::path::{Path, PathBuf};
+
 use eframe::{
     egui::{self, menu, TextEdit},
     epi,
 };
+use futures::executor::block_on;
+use rfd::AsyncFileDialog;
 
 #[derive(Default)]
 pub struct App {
@@ -9,6 +13,16 @@ pub struct App {
     console: String,
     show_watches: bool,
     watches: Vec<String>,
+}
+
+async fn open_script() -> Option<String> {
+    let file = AsyncFileDialog::new().pick_file().await;
+    if let Some(file) = file {
+        let bytes = file.read().await;
+        Some(String::from_utf8_lossy(&bytes).to_string())
+    } else {
+        None
+    }
 }
 
 impl epi::App for App {
@@ -27,10 +41,16 @@ impl epi::App for App {
                         *script = String::new();
                         ui.close_menu();
                     }
+
+                    #[cfg(not(target_arch = "wasm32"))]
                     if ui.button("Open").clicked() {
-                        println!("Filed Dialogs: Not Yet Implemented");
+                        if let Some(file) = block_on(open_script()) {
+                            *script = file;
+                        }
                         ui.close_menu();
                     }
+
+                    #[cfg(not(target_arch = "wasm32"))]
                     if ui.button("Save").clicked() {
                         println!("Filed Dialogs: Not Yet Implemented");
                         ui.close_menu();
