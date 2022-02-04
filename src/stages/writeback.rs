@@ -13,7 +13,7 @@ pub struct MemWb {
     pub instruction: u32,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct PipelineOutput {
     pub syscall: bool,
     pub instruction: u32,

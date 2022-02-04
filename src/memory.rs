@@ -10,6 +10,7 @@ pub enum MemoryError {
 }
 
 /// Handles memory
+#[derive(Default)]
 pub struct Memory {
     data: Vec<u8>,
 }

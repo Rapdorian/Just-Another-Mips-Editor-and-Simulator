@@ -28,7 +28,7 @@ pub fn single_cycle(pc: &mut u32, regs: &mut RegisterFile, mem: &mut Memory) {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct PipelineState {
     pub if_id: IfId,
     pub id_ex: IdEx,

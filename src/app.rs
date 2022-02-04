@@ -7,12 +7,23 @@ use eframe::{
 use futures::executor::block_on;
 use rfd::AsyncFileDialog;
 
+use crate::{
+    parser::{self, compute_labels, model::Line},
+    pipeline::{self, PipelineState},
+    Memory, RegisterFile,
+};
+
 #[derive(Default)]
 pub struct App {
     script: String,
     console: String,
     show_watches: bool,
     watches: Vec<String>,
+    mem: Memory,
+    pc: u32,
+    regs: RegisterFile,
+    state: PipelineState,
+    running: bool,
 }
 
 async fn open_script() -> Option<String> {
@@ -32,6 +43,11 @@ impl epi::App for App {
             console,
             show_watches,
             watches,
+            mem,
+            pc,
+            regs,
+            state,
+            running,
         } = self;
 
         egui::TopBottomPanel::top("Menu").show(ctx, |ui| {
@@ -60,7 +76,31 @@ impl epi::App for App {
 
             menu::bar(ui, |ui| {
                 if ui.button("▶").clicked() {
-                    println!("TODO: Run");
+                    // parse assembly
+                    let lines = parser::parse_string(&script).unwrap();
+                    let labels = compute_labels(&lines);
+
+                    // for each line in the parsed assembly assemble that line and add the result to a vec
+                    let mut raw_mem = vec![];
+                    for line in &lines {
+                        match line {
+                            Line::Instruction(ins) => {
+                                for word in ins {
+                                    raw_mem.push(word.asm(&labels));
+                                }
+                            }
+                            Line::Label(_) => {}
+                        }
+                    }
+
+                    // create our memory object
+                    *mem = Memory::from_word_vec(raw_mem);
+
+                    // reset machine
+                    *pc = 0;
+                    *regs = RegisterFile::default();
+                    *state = PipelineState::default();
+                    *running = true;
                 }
                 if ui.button("⬇").clicked() {
                     println!("TODO: Step into");
@@ -112,8 +152,53 @@ impl epi::App for App {
                     }
                 }
             });
+
+        if *running {
+            *state = pipeline::pipe_cycle(pc, regs, mem, state.clone());
+            ctx.request_repaint();
+        }
     }
     fn name(&self) -> &str {
         "Just Another Mips Editor and Simulator"
+    }
+
+    fn setup(
+        &mut self,
+        _ctx: &egui::CtxRef,
+        _frame: &epi::Frame,
+        _storage: Option<&dyn epi::Storage>,
+    ) {
+    }
+
+    fn warm_up_enabled(&self) -> bool {
+        false
+    }
+
+    fn save(&mut self, _storage: &mut dyn epi::Storage) {}
+
+    fn on_exit(&mut self) {}
+
+    fn auto_save_interval(&self) -> std::time::Duration {
+        std::time::Duration::from_secs(30)
+    }
+
+    fn max_size_points(&self) -> egui::Vec2 {
+        // Some browsers get slow with huge WebGL canvases, so we limit the size:
+        egui::Vec2::new(1024.0, 2048.0)
+    }
+
+    fn clear_color(&self) -> egui::Rgba {
+        // NOTE: a bright gray makes the shadows of the windows look weird.
+        // We use a bit of transparency so that if the user switches on the
+        // `transparent()` option they get immediate results.
+        egui::Color32::from_rgba_unmultiplied(12, 12, 12, 180).into()
+    }
+
+    fn persist_native_window(&self) -> bool {
+        true
+    }
+
+    fn persist_egui_memory(&self) -> bool {
+        true
     }
 }
