@@ -48,6 +48,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
     let mem_read;
     let alu_op;
     let branch;
+    let jump;
     let mut syscall = false;
 
     // This is where instructions are defined
@@ -62,6 +63,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             mem_write = false;
             branch = false;
+            jump = false;
             alu_op = OP_R;
         }
         0x23 => {
@@ -73,6 +75,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = true;
             mem_write = false;
             branch = false;
+            jump = false;
             alu_op = OP_ADD;
         }
         0x2b => {
@@ -84,6 +87,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             mem_write = true;
             branch = false;
+            jump = false;
             alu_op = OP_ADD;
         }
         0x8 => {
@@ -95,6 +99,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             mem_write = false;
             branch = false;
+            jump = false;
             alu_op = OP_ADD;
         }
 
@@ -107,6 +112,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             mem_write = false;
             branch = false;
+            jump = false;
             alu_op = OP_AND;
         }
 
@@ -119,6 +125,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             mem_write = false;
             branch = false;
+            jump = false;
             alu_op = OP_OR;
         }
         0x4 => {
@@ -130,7 +137,20 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             mem_write = false;
             branch = true;
+            jump = false;
             alu_op = OP_SUB;
+        }
+        0x02 => {
+            // J instruction
+            reg_dst = false;
+            alu_src = false;
+            mem_to_reg = false;
+            reg_write = false;
+            mem_read = false;
+            mem_write = false;
+            branch = false;
+            jump = true;
+            alu_op = OP_ADD;
         }
         _ => {
             todo!("implement missing instruction: 0x{:x}", op)
@@ -154,6 +174,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
         mem_to_reg,
         reg_write,
         branch,
+        jump,
         pc: input.pc,
         syscall,
         instruction: input.instruction,

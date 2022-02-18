@@ -2,10 +2,14 @@
 
 use std::collections::HashMap;
 
+use anyhow::{anyhow, bail, Result};
 use nom::{
     branch::alt,
     character::complete::multispace0,
-    multi::many0,
+    combinator::{cut, eof, opt},
+    complete::tag,
+    error::VerboseError,
+    multi::{many0, many_till},
     sequence::{delimited, preceded},
     Finish, IResult,
 };
@@ -32,24 +36,15 @@ pub enum ParseError {
     UnknownInstruction(String),
 }
 
-pub fn parse_line(input: &str) -> IResult<&str, Line> {
+pub fn parse_line(input: &str) -> IResult<&str, Line, VerboseError<&str>> {
     delimited(multispace0, alt((instruction, label)), multispace0)(input)
 }
 
-pub fn parse_string(input: &str) -> Result<Vec<Line>, nom::error::Error<String>> {
-    match many0(parse_line)(input).finish() {
-        Ok((rem, output)) => {
-            if rem.trim().len() != 0 {
-                eprintln!("Unparsed remainder: {}", rem);
-            }
-            Ok(output)
-        }
-        Err(e) => Err(nom::error::Error {
-            //Ugly hack to I don't have to borrow input statically
-            input: e.input.to_string(),
-            code: e.code,
-        }),
-    }
+pub fn parse_string(input: &str) -> Result<Vec<Line>> {
+    let (_, (output, _)) = many_till(parse_line, eof)(input)
+        .finish()
+        .map_err(|e| anyhow!("{}", e))?;
+    Ok(output)
 }
 
 pub fn compute_labels(input: &[Line]) -> LabelTable {

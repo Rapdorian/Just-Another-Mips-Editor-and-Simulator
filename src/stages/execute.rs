@@ -19,6 +19,7 @@ pub struct IdEx {
     pub syscall: bool,
     // forwarded data
     pub branch: bool,
+    pub jump: bool,
     pub pc: u32,
     pub mem_write: bool,
     pub mem_read: bool,
@@ -118,7 +119,9 @@ pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
         write_register: if input.reg_dst { input.rd } else { input.rt },
         reg_write: input.reg_write,
         branch: input.branch,
-        branch_pc: input.pc + (input.imm << 2),
+        jump: input.jump,
+        jump_pc: input.imm << 2,
+        branch_pc: input.pc.wrapping_add((input.imm << 2) as i16 as u32), // casts are for sign extension
         syscall,
         instruction: input.instruction,
     }
@@ -145,8 +148,8 @@ pub fn alu(a: u32, b: u32, op: (bool, bool, u8)) -> u32 {
     let b = if op.1 { !b } else { b };
 
     // this is a hack since we haven't implemented carry bits yet
-    let arith_a = if op.0 { a + 1 } else { a };
-    let arith_b = if op.1 { b + 1 } else { b };
+    let arith_a = if op.0 { a.wrapping_add(1) } else { a };
+    let arith_b = if op.1 { b.wrapping_add(1) } else { b };
 
     match op.2 {
         ALU_AND => a & b,

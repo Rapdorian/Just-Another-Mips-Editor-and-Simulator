@@ -6,6 +6,11 @@ fn main() {
     let app = simulator::App::default();
     let opts = eframe::NativeOptions::default();
     eframe::run_native(Box::new(app), opts);
+    let mut pc = 0;
+                    mem.push(word.asm(&labels, pc));
+                    pc += 4;
+
+    println!("{:X?}", mem);
 }
 
 // fn run() -> Result<()> {

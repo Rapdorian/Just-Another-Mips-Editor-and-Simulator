@@ -8,10 +8,12 @@ pub struct ExMem {
     pub alu_result: u32,
     pub zero: bool,
     pub branch: bool,
+    pub jump: bool,
     pub write_data: u32,
     pub write: bool,
     pub read: bool,
     pub branch_pc: u32,
+    pub jump_pc: u32,
     // forwarded data
     pub mem_to_reg: bool,
     pub write_register: Register,
@@ -39,6 +41,10 @@ pub fn memory(pc: &mut u32, memory: &mut Memory, input: ExMem) -> MemWb {
     if input.branch && input.zero {
         // branch to PC copmuted in execute stage
         *pc = input.branch_pc;
+    }
+
+    if input.jump {
+        *pc = input.jump_pc;
     }
 
     MemWb {
