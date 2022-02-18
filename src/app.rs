@@ -10,6 +10,7 @@ use rfd::AsyncFileDialog;
 use crate::{
     parser::{self, compute_labels, model::Line},
     pipeline::{self, PipelineState},
+    syscall::{resolve_syscall, Syscall},
     Memory, RegisterFile,
 };
 
@@ -17,6 +18,8 @@ use crate::{
 pub struct App {
     script: String,
     console: String,
+    console_input: String,
+    edit_watch: String,
     show_watches: bool,
     watches: Vec<String>,
     mem: Memory,
@@ -24,6 +27,7 @@ pub struct App {
     regs: RegisterFile,
     state: PipelineState,
     running: bool,
+    pending_syscall: Option<Syscall>,
 }
 
 async fn open_script() -> Option<String> {
@@ -41,6 +45,8 @@ impl epi::App for App {
         let Self {
             script,
             console,
+            console_input,
+            edit_watch,
             show_watches,
             watches,
             mem,
@@ -48,6 +54,7 @@ impl epi::App for App {
             regs,
             state,
             running,
+            pending_syscall,
         } = self;
 
         egui::TopBottomPanel::top("Menu").show(ctx, |ui| {
@@ -82,11 +89,13 @@ impl epi::App for App {
 
                     // for each line in the parsed assembly assemble that line and add the result to a vec
                     let mut raw_mem = vec![];
+                    let mut assembler_pc = 0;
                     for line in &lines {
                         match line {
                             Line::Instruction(ins) => {
                                 for word in ins {
-                                    raw_mem.push(word.asm(&labels));
+                                    raw_mem.push(word.asm(&labels, assembler_pc));
+                                    assembler_pc += 4;
                                 }
                             }
                             Line::Label(_) => {}
@@ -101,6 +110,7 @@ impl epi::App for App {
                     *regs = RegisterFile::default();
                     *state = PipelineState::default();
                     *running = true;
+                    console.clear();
                 }
                 if ui.button("⬇").clicked() {
                     println!("TODO: Step into");
@@ -121,9 +131,31 @@ impl epi::App for App {
         egui::TopBottomPanel::bottom("Console")
             .resizable(true)
             .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(">");
+                    if ui
+                        .add_sized(
+                            (ui.available_width(), 20.0),
+                            TextEdit::singleline(console_input).code_editor(),
+                        )
+                        .lost_focus()
+                    {
+                        console.push_str(console_input);
+                        console.push('\n');
+                        if let Some(syscall) = pending_syscall {
+                            if let Err(e) = resolve_syscall(regs, syscall, &console_input) {
+                                console.push_str(&format!("\nERROR: {}\n", e));
+                            }
+                            console_input.clear();
+                            *pending_syscall = None;
+                        }
+                    }
+                });
+
+                let mut console_in = console.clone();
                 ui.add_sized(
                     ui.available_size(),
-                    TextEdit::multiline(&mut "TODO: Console").code_editor(),
+                    TextEdit::multiline(&mut console_in).code_editor(),
                 );
             });
 
@@ -145,60 +177,32 @@ impl epi::App for App {
                         cols[1].label("???");
                     }
                 });
-                if ui.text_edit_singleline(console).lost_focus() {
-                    if console.trim().len() != 0 {
-                        watches.push(console.to_string());
-                        *console = String::new();
+                if ui.text_edit_singleline(edit_watch).lost_focus() {
+                    if edit_watch.trim().len() != 0 {
+                        watches.push(edit_watch.to_string());
+                        *edit_watch = String::new();
                     }
                 }
             });
 
         if *running {
-            *state = pipeline::pipe_cycle(pc, regs, mem, state.clone());
-            ctx.request_repaint();
+            if let None = pending_syscall {
+                let (new_state, syscall) = pipeline::pipe_cycle(pc, regs, mem, state.clone());
+                *state = new_state;
+
+                if let Some(syscall) = syscall {
+                    match syscall {
+                        Syscall::Print(out) => console.push_str(&out),
+                        Syscall::Error(out) => console.push_str(&format!("\nERROR: {}\n", out)),
+                        Syscall::Quit => *running = false,
+                        Syscall::ReadInt => *pending_syscall = Some(syscall),
+                    }
+                }
+                ctx.request_repaint();
+            }
         }
     }
     fn name(&self) -> &str {
         "Just Another Mips Editor and Simulator"
-    }
-
-    fn setup(
-        &mut self,
-        _ctx: &egui::CtxRef,
-        _frame: &epi::Frame,
-        _storage: Option<&dyn epi::Storage>,
-    ) {
-    }
-
-    fn warm_up_enabled(&self) -> bool {
-        false
-    }
-
-    fn save(&mut self, _storage: &mut dyn epi::Storage) {}
-
-    fn on_exit(&mut self) {}
-
-    fn auto_save_interval(&self) -> std::time::Duration {
-        std::time::Duration::from_secs(30)
-    }
-
-    fn max_size_points(&self) -> egui::Vec2 {
-        // Some browsers get slow with huge WebGL canvases, so we limit the size:
-        egui::Vec2::new(1024.0, 2048.0)
-    }
-
-    fn clear_color(&self) -> egui::Rgba {
-        // NOTE: a bright gray makes the shadows of the windows look weird.
-        // We use a bit of transparency so that if the user switches on the
-        // `transparent()` option they get immediate results.
-        egui::Color32::from_rgba_unmultiplied(12, 12, 12, 180).into()
-    }
-
-    fn persist_native_window(&self) -> bool {
-        true
-    }
-
-    fn persist_egui_memory(&self) -> bool {
-        true
     }
 }

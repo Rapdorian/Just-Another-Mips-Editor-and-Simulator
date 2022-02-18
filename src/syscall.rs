@@ -2,14 +2,36 @@ use crate::{Memory, RegisterFile, A0, V0};
 use anyhow::{bail, Context, Result};
 use std::io;
 
-pub fn handle_syscall(reg_file: &mut RegisterFile, mem: &mut Memory) -> Result<()> {
+pub enum Syscall {
+    Print(String),
+    Error(String),
+    Quit,
+    ReadInt,
+}
+
+pub fn resolve_syscall(reg_file: &mut RegisterFile, syscall: &Syscall, value: &str) -> Result<()> {
+    match syscall {
+        Syscall::ReadInt => {
+            let buffer = value.trim();
+            let val = buffer
+                .parse::<i32>()
+                .with_context(|| format!("Attempting to parse '{}'", buffer))?
+                as u32;
+            reg_file.write_register(V0, val);
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+pub fn handle_syscall(reg_file: &mut RegisterFile, mem: &mut Memory) -> Result<Syscall> {
     // Handle syscall instructions
     let v0 = reg_file.read_register(V0);
     match v0 {
         1 => {
             // print int
             let arg = reg_file.read_register(A0);
-            print!("{}", arg as i32);
+            Ok(Syscall::Print(format!("{}", arg as i32)))
         }
         4 => {
             // print string
@@ -24,49 +46,38 @@ pub fn handle_syscall(reg_file: &mut RegisterFile, mem: &mut Memory) -> Result<(
                 b = mem.read(ptr)?;
             }
             let s = String::from_utf8(buffer)?;
-            print!("{}", s);
+            Ok(Syscall::Print(format!("{}", s)))
         }
-        5 => {
-            // read int
-            let mut buffer = String::new();
-            io::stdin().read_line(&mut buffer)?;
-            let buffer = buffer.trim();
-            let val = buffer
-                .parse::<i32>()
-                .with_context(|| format!("Attempting to parse '{}'", buffer))?
-                as u32;
-            reg_file.write_register(V0, val);
-        }
-        10 => {
-            std::process::exit(0);
-        }
+        5 => Ok(Syscall::ReadInt),
+        10 => Ok(Syscall::Quit),
 
         11 => {
             // print char
             let arg = reg_file.read_register(A0);
             let c = char::from_u32(arg).unwrap_or('�');
-            print!("{}", c);
+            Ok(Syscall::Print(format!("{}", c)))
         }
         12 => {
-            bail!("read char syscall");
+            bail!("read char syscall not yet implemented");
             // implementing this properly will require a single point for handling stdin
         }
         34 => {
             // print int hex
             let arg = reg_file.read_register(A0);
-            print!("{:x}", arg);
+            Ok(Syscall::Print(format!("{:x}", arg)))
         }
         35 => {
             // print int binary
             let arg = reg_file.read_register(A0);
-            print!("{:b}", arg);
+            Ok(Syscall::Print(format!("{:b}", arg)))
         }
         36 => {
             // print int unsigned
             let arg = reg_file.read_register(A0);
-            print!("{}", arg);
+            Ok(Syscall::Print(format!("{}", arg)))
         }
-        _ => {eprintln!("Unrecognized syscall: {}", v0)}
+        _ => {
+            bail!("Unrecognized syscall: {}", v0)
+        }
     }
-    Ok(())
 }

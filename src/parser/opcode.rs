@@ -22,6 +22,7 @@ pub fn opcode(input: &str) -> IResult<&str, (Opcode, Style), VerboseError<&str>>
             |name: &str| match name.to_lowercase().trim() {
                 "add" => Ok((Opcode::Funct(0x20), Style::None)),
                 "sub" => Ok((Opcode::Funct(0x22), Style::None)),
+                "addi" => Ok((Opcode::Op(0x08), Style::Literal)),
                 "addiu" => Ok((Opcode::Op(0x09), Style::Literal)),
                 "addu" => Ok((Opcode::Funct(0x21), Style::None)),
                 "and" => Ok((Opcode::Funct(0x24), Style::None)),
