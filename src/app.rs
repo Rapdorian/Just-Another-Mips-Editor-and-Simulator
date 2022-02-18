@@ -83,8 +83,21 @@ impl epi::App for App {
 
             menu::bar(ui, |ui| {
                 if ui.button("▶").clicked() {
+                    // reset machine
+                    *pc = 0;
+                    *regs = RegisterFile::default();
+                    *state = PipelineState::default();
+                    *running = true;
+                    console.clear();
+
                     // parse assembly
-                    let lines = parser::parse_string(&script).unwrap();
+                    let lines = match parser::parse_string(&script) {
+                        Ok(lines) => lines,
+                        Err(err) => {
+                            console.push_str(&format!("{}\n", err));
+                            vec![]
+                        }
+                    };
                     let labels = compute_labels(&lines);
 
                     // for each line in the parsed assembly assemble that line and add the result to a vec
@@ -104,13 +117,6 @@ impl epi::App for App {
 
                     // create our memory object
                     *mem = Memory::from_word_vec(raw_mem);
-
-                    // reset machine
-                    *pc = 0;
-                    *regs = RegisterFile::default();
-                    *state = PipelineState::default();
-                    *running = true;
-                    console.clear();
                 }
                 if ui.button("⬇").clicked() {
                     println!("TODO: Step into");
