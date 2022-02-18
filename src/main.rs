@@ -74,17 +74,21 @@ fn run() -> Result<()> {
     let script = fs::read_to_string(img_path)?;
     let lines = parser::parse_string(&script)?;
     let labels = compute_labels(&lines);
+    let mut pc = 0;
 
     for line in &lines {
         match line {
             Line::Instruction(ins) => {
                 for word in ins {
-                    mem.push(word.asm(&labels));
+                    mem.push(word.asm(&labels, pc));
+                    pc += 4;
                 }
             }
             Line::Label(_) => {}
         }
     }
+
+    println!("{:X?}", mem);
 
     let mut mem = Memory::from_word_vec(mem);
 

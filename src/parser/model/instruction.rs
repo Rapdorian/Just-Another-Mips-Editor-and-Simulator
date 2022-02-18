@@ -9,21 +9,36 @@ pub enum Symbol {
     Address(u32),
 }
 
+impl Symbol {
+    pub fn asm(&self, labels: &LabelTable) -> u32 {
+        (match self {
+            Symbol::Label(ref name) => labels[name] as u32,
+            Symbol::Address(x) => *x,
+        } & 0x0FFFFFFF)
+            >> 2
+    }
+}
+
 #[derive(Debug)]
 pub enum Imm {
     Label(String),
     HighHWord(String),
     LowHWord(String),
-    Value(u32),
+    Value(i64),
+    PcRelative(String),
 }
 
 impl Imm {
-    pub fn asm(&self, labels: &LabelTable) -> u32 {
+    pub fn asm(&self, labels: &LabelTable, pc: u32) -> u32 {
         match self {
             Imm::Label(ref name) => labels[name] as u32,
             Imm::HighHWord(ref name) => (labels[name] as u32 & 0xFFFF0000) >> 16,
             Imm::LowHWord(ref name) => labels[name] as u32 & 0xFFFF,
-            Imm::Value(x) => *x,
+            Imm::Value(x) => *x as u32,
+            Imm::PcRelative(ref name) => {
+                let offset = (labels[name] as u32).wrapping_sub(pc + 4 as u32) >> 2;
+                offset
+            }
         }
     }
 }
@@ -57,7 +72,16 @@ fn field(x: u32, start: u32, width: u32) -> u32 {
 }
 
 impl Instruction {
-    pub fn asm(&self, labels: &LabelTable) -> u32 {
+    pub fn asm(&self, labels: &LabelTable, pc: u32) -> u32 {
+        if let Instruction::I { op, rt, rs, imm } = self {
+            if *op == Opcode::Op(0x04) {
+                println!("OP: {:032b}", field(op.value(), 26, 6));
+                println!("RS: {:032b}", field(rs.value(), 21, 5));
+                println!("RT: {:032b}", field(rt.value(), 16, 5));
+                println!("IMM: {:032b}", field(imm.asm(labels, pc), 0, 16));
+            }
+        }
+
         match self {
             Instruction::R {
                 op,
@@ -74,12 +98,14 @@ impl Instruction {
             }
             Instruction::I { op, rt, rs, imm } => {
                 field(op.value(), 26, 6)
-                    | field(imm.asm(labels), 0, 16)
+                    | field(imm.asm(labels, pc), 0, 16)
                     | field(rt.value(), 16, 5)
                     | field(rs.value(), 21, 5)
             }
             Instruction::Literal { data } => *data,
-            Instruction::J { op, addr } => todo!("J instructions are not supported"),
+            Instruction::J { op, addr } => {
+                field(op.value(), 26, 6) | field(addr.asm(labels), 0, 26)
+            }
         }
     }
 }
