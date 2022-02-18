@@ -153,10 +153,13 @@ impl epi::App for App {
                 });
 
                 let mut console_in = console.clone();
-                ui.add_sized(
-                    ui.available_size(),
-                    TextEdit::multiline(&mut console_in).code_editor(),
-                );
+
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.add_sized(
+                        ui.available_size(),
+                        TextEdit::multiline(&mut console_in).code_editor(),
+                    );
+                });
             });
 
         egui::CentralPanel::default().show(ctx, |ui| {
