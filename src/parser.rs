@@ -2,16 +2,10 @@
 
 use std::collections::HashMap;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, Result};
 use nom::{
-    branch::alt,
-    character::complete::multispace0,
-    combinator::{cut, eof, opt},
-    complete::tag,
-    error::VerboseError,
-    multi::{many0, many_till},
-    sequence::{delimited, preceded},
-    Finish, IResult,
+    branch::alt, character::complete::multispace0, combinator::eof, error::VerboseError,
+    multi::many_till, sequence::delimited, Finish, IResult,
 };
 use thiserror::Error;
 

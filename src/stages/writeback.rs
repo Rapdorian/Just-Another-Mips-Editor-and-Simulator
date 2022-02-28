@@ -9,12 +9,17 @@ pub struct MemWb {
     pub write_register: Register,
     pub reg_write: bool,
     pub syscall: bool,
+    // demo thing
+    pub instruction: u32,
 }
 
+#[derive(Debug, Default, Clone)]
 pub struct PipelineOutput {
     pub syscall: bool,
+    pub instruction: u32,
 }
 
+/// Writeback pipeline stage
 pub fn writeback(reg_file: &mut RegisterFile, input: MemWb) -> PipelineOutput {
     if input.reg_write {
         if input.mem_to_reg {
@@ -25,5 +30,6 @@ pub fn writeback(reg_file: &mut RegisterFile, input: MemWb) -> PipelineOutput {
     }
     PipelineOutput {
         syscall: input.syscall,
+        instruction: input.instruction,
     }
 }

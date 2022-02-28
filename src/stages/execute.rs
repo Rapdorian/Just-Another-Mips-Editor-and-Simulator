@@ -26,6 +26,9 @@ pub struct IdEx {
     pub mem_to_reg: bool,
     pub reg_write: bool,
     pub rs: Register,
+
+    // demo thing
+    pub instruction: u32,
 }
 
 pub mod op_ctrl {
@@ -89,6 +92,7 @@ pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
         arg2 = fwd_unit.ex_mem.2;
     }
 
+    // Handle immediate arguments
     if input.alu_src {
         arg2 = input.imm;
     }
@@ -119,6 +123,7 @@ pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
         jump_pc: input.imm << 2,
         branch_pc: input.pc.wrapping_add((input.imm << 2) as i16 as u32), // casts are for sign extension
         syscall,
+        instruction: input.instruction,
     }
 }
 

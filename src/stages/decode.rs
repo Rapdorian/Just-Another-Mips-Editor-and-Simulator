@@ -10,6 +10,7 @@ pub struct IfId {
     pub pc: u32,
 }
 
+/// Decodes and instruction
 pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
     // instruction masks
     let fn_mask = 0b00000000000000000000000000111111;
@@ -20,6 +21,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
     let op_mask = 0b11111100000000000000000000000000;
     let imm_mask = fn_mask | sh_mask | rd_mask;
 
+    // Use masks to get the field values
     let rd = (input.instruction & rd_mask) >> 11;
     let rt = (input.instruction & rt_mask) >> 16;
     let rs = (input.instruction & rs_mask) >> 21;
@@ -28,6 +30,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
     let op = (input.instruction & op_mask) >> 26;
     let imm = input.instruction & imm_mask;
 
+    // make registers typed
     let rs: Register = rs.into();
     let rt: Register = rt.into();
     let rd: Register = rd.into();
@@ -174,5 +177,6 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
         jump,
         pc: input.pc,
         syscall,
+        instruction: input.instruction,
     }
 }

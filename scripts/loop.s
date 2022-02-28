@@ -11,7 +11,9 @@ loop:
 	addi $t0, $t0, 1
 	
 	beq $t0, $t1, done
+    nop
 j loop
+nop
 done:
 li $v0, 10
 syscall
