@@ -1,4 +1,5 @@
 mod app;
+mod machine;
 mod memory;
 mod parser;
 mod pipeline;
@@ -30,6 +31,7 @@ pub mod stages {
 }
 
 pub use app::App;
+pub use machine::*;
 pub use memory::*;
 pub use register::*;
 

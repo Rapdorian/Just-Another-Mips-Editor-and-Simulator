@@ -11,21 +11,24 @@ use crate::{
     parser::{self, compute_labels, model::Line},
     pipeline::{self, PipelineState},
     syscall::{resolve_syscall, Syscall},
-    Memory, RegisterFile,
+    Machine, Memory, RegisterFile,
 };
+
+use self::{console::Console, editor::Editor, run_menu::RunMenu};
+
+mod console;
+mod editor;
+mod run_menu;
 
 #[derive(Default)]
 pub struct App {
+    machine: Machine,
     script: String,
-    console: String,
+    console: Console,
     console_input: String,
     edit_watch: String,
     show_watches: bool,
     watches: Vec<String>,
-    mem: Memory,
-    pc: u32,
-    regs: RegisterFile,
-    state: PipelineState,
     running: bool,
     pending_syscall: Option<Syscall>,
 }
@@ -43,21 +46,20 @@ async fn open_script() -> Option<String> {
 impl epi::App for App {
     fn update(&mut self, ctx: &egui::CtxRef, frame: &epi::Frame) {
         let Self {
+            machine,
             script,
             console,
             console_input,
             edit_watch,
             show_watches,
             watches,
-            mem,
-            pc,
-            regs,
-            state,
             running,
             pending_syscall,
         } = self;
 
+        // menu bars
         egui::TopBottomPanel::top("Menu").show(ctx, |ui| {
+            // draw main menu bar (not much to put here yet)
             menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("New").clicked() {
@@ -73,60 +75,20 @@ impl epi::App for App {
                         ui.close_menu();
                     }
 
-                    #[cfg(not(target_arch = "wasm32"))]
-                    if ui.button("Save").clicked() {
-                        println!("Filed Dialogs: Not Yet Implemented");
-                        ui.close_menu();
-                    }
+                    // #[cfg(not(target_arch = "wasm32"))]
+                    // if ui.button("Save").clicked() {
+                    //     println!("Filed Dialogs: Not Yet Implemented");
+                    //     ui.close_menu();
+                    // }
                 });
             });
 
+            // draw toolbar
             menu::bar(ui, |ui| {
-                if ui.button("▶").clicked() {
-                    // reset machine
-                    *pc = 0;
-                    *regs = RegisterFile::default();
-                    *state = PipelineState::default();
-                    *running = true;
-                    console.clear();
+                // add run menu
+                ui.add(RunMenu::new(ctx, machine, running, script, console));
 
-                    // parse assembly
-                    let lines = match parser::parse_string(&script) {
-                        Ok(lines) => lines,
-                        Err(err) => {
-                            console.push_str(&format!("{}\n", err));
-                            vec![]
-                        }
-                    };
-                    let labels = compute_labels(&lines);
-
-                    // for each line in the parsed assembly assemble that line and add the result to a vec
-                    let mut raw_mem = vec![];
-                    let mut assembler_pc = 0;
-                    for line in &lines {
-                        match line {
-                            Line::Instruction(ins) => {
-                                for word in ins {
-                                    raw_mem.push(word.asm(&labels, assembler_pc));
-                                    assembler_pc += 4;
-                                }
-                            }
-                            Line::Label(_) => {}
-                        }
-                    }
-
-                    // create our memory object
-                    *mem = Memory::from_word_vec(raw_mem);
-                }
-                if ui.button("⬇").clicked() {
-                    println!("TODO: Step into");
-                }
-                if ui.button("➡").clicked() {
-                    println!("TODO: Step over");
-                }
-                if ui.button("⏏").clicked() {
-                    println!("TODO: Step out");
-                }
+                // toggle watches
                 ui.separator();
                 if ui.button("🏷").clicked() {
                     *show_watches = !(*show_watches);
@@ -137,43 +99,16 @@ impl epi::App for App {
         egui::TopBottomPanel::bottom("Console")
             .resizable(true)
             .show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(">");
-                    if ui
-                        .add_sized(
-                            (ui.available_width(), 20.0),
-                            TextEdit::singleline(console_input).code_editor(),
-                        )
-                        .lost_focus()
-                    {
-                        console.push_str(console_input);
-                        console.push('\n');
-                        if let Some(syscall) = pending_syscall {
-                            if let Err(e) = resolve_syscall(regs, syscall, &console_input) {
-                                console.push_str(&format!("\nERROR: {}\n", e));
-                            }
-                            console_input.clear();
-                            *pending_syscall = None;
+                if ui.add(console.view()).changed() {
+                    if let Some(input) = console.input() {
+                        if let Err(e) = machine.resolve_input(input) {
+                            console.error(&e.to_string());
                         }
                     }
-                });
-
-                let mut console_in = console.clone();
-
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.add_sized(
-                        ui.available_size(),
-                        TextEdit::multiline(&mut console_in).code_editor(),
-                    );
-                });
+                }
             });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.add_sized(
-                ui.available_size(),
-                TextEdit::multiline(script).code_editor(),
-            );
-        });
+        egui::CentralPanel::default().show(ctx, |ui| ui.add(Editor::new(script)));
 
         let mut dummy_watch = String::from("$t42");
 
@@ -193,25 +128,48 @@ impl epi::App for App {
                     }
                 }
             });
-
-        if *running {
-            if let None = pending_syscall {
-                let (new_state, syscall) = pipeline::pipe_cycle(pc, regs, mem, state.clone());
-                *state = new_state;
-
-                if let Some(syscall) = syscall {
-                    match syscall {
-                        Syscall::Print(out) => console.push_str(&out),
-                        Syscall::Error(out) => console.push_str(&format!("\nERROR: {}\n", out)),
-                        Syscall::Quit => *running = false,
-                        Syscall::ReadInt => *pending_syscall = Some(syscall),
-                    }
-                }
-                ctx.request_repaint();
-            }
-        }
     }
     fn name(&self) -> &str {
         "Just Another Mips Editor and Simulator"
+    }
+
+    fn setup(
+        &mut self,
+        _ctx: &egui::CtxRef,
+        _frame: &epi::Frame,
+        _storage: Option<&dyn epi::Storage>,
+    ) {
+    }
+
+    fn warm_up_enabled(&self) -> bool {
+        false
+    }
+
+    fn save(&mut self, _storage: &mut dyn epi::Storage) {}
+
+    fn on_exit(&mut self) {}
+
+    fn auto_save_interval(&self) -> std::time::Duration {
+        std::time::Duration::from_secs(30)
+    }
+
+    fn max_size_points(&self) -> egui::Vec2 {
+        // Some browsers get slow with huge WebGL canvases, so we limit the size:
+        egui::Vec2::new(1024.0, 2048.0)
+    }
+
+    fn clear_color(&self) -> egui::Rgba {
+        // NOTE: a bright gray makes the shadows of the windows look weird.
+        // We use a bit of transparency so that if the user switches on the
+        // `transparent()` option they get immediate results.
+        egui::Color32::from_rgba_unmultiplied(12, 12, 12, 180).into()
+    }
+
+    fn persist_native_window(&self) -> bool {
+        true
+    }
+
+    fn persist_egui_memory(&self) -> bool {
+        true
     }
 }

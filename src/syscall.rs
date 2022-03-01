@@ -2,6 +2,7 @@ use crate::{Memory, RegisterFile, A0, V0};
 use anyhow::{bail, Context, Result};
 use std::io;
 
+#[derive(Debug)]
 pub enum Syscall {
     Print(String),
     Error(String),
