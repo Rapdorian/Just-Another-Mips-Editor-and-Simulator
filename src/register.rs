@@ -147,4 +147,8 @@ impl RegisterFile {
     pub fn read_register(&self, reg: Register) -> u32 {
         self.registers[reg.0 as usize]
     }
+
+    pub fn get_mut(&mut self, reg: Register) -> &mut u32 {
+        &mut self.registers[reg.0 as usize]
+    }
 }
