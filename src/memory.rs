@@ -113,6 +113,12 @@ impl Memory {
 
     /// Write an aligned word to memory
     pub fn write_word(&mut self, address: u32, data: u32) -> Result<(), MemoryError> {
+        if address + 3 >= self.data.len() as u32 {
+            return Err(MemoryError::OutOfBounds {
+                index: address,
+                len: self.data.len(),
+            });
+        }
         if address % 4 != 0 {
             return Err(MemoryError::UnalignedAccess {
                 addr: address,

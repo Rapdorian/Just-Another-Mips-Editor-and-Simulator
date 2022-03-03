@@ -14,23 +14,26 @@ use crate::{
     Machine, Memory, RegisterFile,
 };
 
-use self::{console::Console, editor::Editor, run_menu::RunMenu};
+use self::{
+    console::Console,
+    editor::Editor,
+    run_menu::RunMenu,
+    watches::{Watch, WatchList},
+};
 
 mod console;
 mod editor;
 mod run_menu;
+mod watches;
 
 #[derive(Default)]
 pub struct App {
     machine: Machine,
     script: String,
     console: Console,
-    console_input: String,
-    edit_watch: String,
     show_watches: bool,
-    watches: Vec<String>,
+    watches: Vec<Watch>,
     running: bool,
-    pending_syscall: Option<Syscall>,
 }
 
 async fn open_script() -> Option<String> {
@@ -49,15 +52,18 @@ impl epi::App for App {
             machine,
             script,
             console,
-            console_input,
-            edit_watch,
             show_watches,
             watches,
             running,
-            pending_syscall,
         } = self;
 
-        // menu bars
+        // Draw the watches in their own window, draw it first so the window is not constrained to
+        // a specific part of the screen
+        egui::Window::new("Watches")
+            .open(show_watches)
+            .show(ctx, |ui| ui.add(WatchList::new(watches, machine)));
+
+        // draw the menu bars
         egui::TopBottomPanel::top("Menu").show(ctx, |ui| {
             // draw main menu bar (not much to put here yet)
             menu::bar(ui, |ui| {
@@ -96,38 +102,25 @@ impl epi::App for App {
             });
         });
 
+        // Draw the console in a bottom panel
         egui::TopBottomPanel::bottom("Console")
             .resizable(true)
             .show(ctx, |ui| {
                 if ui.add(console.view()).changed() {
+                    // if we get input from the console we want to try to use that to resolve a
+                    // system call
                     if let Some(input) = console.input() {
+                        // if resolving the system call failed send an error to the console
                         if let Err(e) = machine.resolve_input(input) {
                             console.error(&e.to_string());
+                            // and stop the program
+                            *running = false;
                         }
                     }
                 }
             });
 
         egui::CentralPanel::default().show(ctx, |ui| ui.add(Editor::new(script)));
-
-        let mut dummy_watch = String::from("$t42");
-
-        egui::Window::new("Watches")
-            .open(show_watches)
-            .show(ctx, |ui| {
-                ui.columns(2, |cols| {
-                    for watch in watches.iter_mut() {
-                        cols[0].text_edit_singleline(watch);
-                        cols[1].label("???");
-                    }
-                });
-                if ui.text_edit_singleline(edit_watch).lost_focus() {
-                    if edit_watch.trim().len() != 0 {
-                        watches.push(edit_watch.to_string());
-                        *edit_watch = String::new();
-                    }
-                }
-            });
     }
     fn name(&self) -> &str {
         "Just Another Mips Editor and Simulator"

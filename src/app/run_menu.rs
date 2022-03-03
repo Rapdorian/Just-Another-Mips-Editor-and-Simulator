@@ -57,10 +57,11 @@ impl<'a> RunMenu<'a> {
     }
 
     /// Draw a step into button
-    fn step_into(&mut self, ui: &mut Ui) -> Response {
+    fn step_into(&mut self, ui: &mut Ui, should_cycle: &mut bool) -> Response {
         let response = ui.button("⬇");
         if response.clicked() {
-            println!("TODO: Step into");
+            self.console.error("\nWARNING: Make sure you have assembled your code since stepping does not update your code\n");
+            *should_cycle = true;
         }
         response
     }
@@ -82,6 +83,26 @@ impl<'a> RunMenu<'a> {
         }
         response
     }
+
+    /// Assemble but do not run this program
+    fn build(&mut self, ui: &mut Ui) -> Response {
+        let response = ui.button("Build");
+        if response.clicked() {
+            self.machine.reset();
+            self.console.clear();
+
+            let mem = match assembler(self.script) {
+                Ok(asm) => asm,
+                Err(e) => {
+                    self.console.error(&format!("{e}"));
+                    Memory::default()
+                }
+            };
+
+            self.machine.flash(mem);
+        }
+        response
+    }
 }
 
 /// Draws the run menu for the given machine
@@ -89,14 +110,19 @@ impl<'a> RunMenu<'a> {
 /// Also handles stepping the machine if it is enabled
 impl<'a> Widget for RunMenu<'a> {
     fn ui(mut self, ui: &mut Ui) -> Response {
+        let mut should_cycle = *self.running;
         let response = self
             .run(ui)
-            .union(self.step_into(ui))
+            .union(self.step_into(ui, &mut should_cycle))
             .union(self.step_over(ui))
-            .union(self.step_out(ui));
+            .union(self.step_out(ui))
+            .union(self.build(ui));
 
-        if *self.running {
+        if should_cycle {
+            // record anything that needs to be printed to the console from a syscall
             let mut print = String::new();
+
+            // record if we are running so we can stop it from the Quit syscall
             let mut running = *self.running;
 
             self.machine.cycle();
@@ -110,6 +136,7 @@ impl<'a> Widget for RunMenu<'a> {
             });
             self.ctx.request_repaint();
 
+            // apply the result of syscalls
             if print.len() > 0 {
                 self.console.print(&print);
             }

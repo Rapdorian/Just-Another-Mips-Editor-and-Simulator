@@ -4,7 +4,7 @@ use crate::{
     parser::{self, compute_labels, model::Line},
     pipeline::{self, PipelineState},
     syscall::{resolve_syscall, Syscall},
-    Memory, RegisterFile,
+    Memory, Register, RegisterFile,
 };
 use anyhow::Result;
 
@@ -19,6 +19,23 @@ pub struct Machine {
 }
 
 impl Machine {
+    /// Fetch a readonly view of this machines registers
+    pub fn register(&self, reg: Register) -> u32 {
+        self.regs.read_register(reg)
+    }
+
+    pub fn register_mut(&mut self, reg: Register) -> &mut u32 {
+        self.regs.get_mut(reg)
+    }
+
+    pub fn read_word(&self, addr: u32) -> u32 {
+        self.mem.read_word(addr).unwrap_or(0)
+    }
+
+    pub fn write_word(&mut self, addr: u32, val: u32) {
+        self.mem.write_word(addr, val).unwrap_or(()); // TODO: This is a bad idea
+    }
+
     /// Reset this machine so it can be ran again
     ///
     /// Note that this will not reset the contents of memory or registers for that see
