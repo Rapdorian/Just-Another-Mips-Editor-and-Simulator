@@ -18,6 +18,7 @@ syscall
 li $v0, 10
 syscall
 
+.data
 prompt:
 .ascii "Enter number to double:\n\0"
 disp:

@@ -1,6 +1,5 @@
 use crate::{Memory, RegisterFile, A0, V0};
 use anyhow::{bail, Context, Result};
-use std::io;
 
 #[derive(Debug)]
 pub enum Syscall {
@@ -40,11 +39,11 @@ pub fn handle_syscall(reg_file: &mut RegisterFile, mem: &mut Memory) -> Result<S
 
             // to make this unicode aware we need to bundle it into a buffer first
             let mut buffer = vec![];
-            let mut b = mem.read(ptr)?;
+            let mut b = mem.get(ptr) as u8; //TODO: Less than word sized reads
             while b != 0 {
                 buffer.push(b);
                 ptr += 1;
-                b = mem.read(ptr)?;
+                b = mem.get(ptr) as u8;
             }
             let s = String::from_utf8(buffer)?;
             Ok(Syscall::Print(format!("{}", s)))

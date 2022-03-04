@@ -2,6 +2,8 @@ use std::convert::TryFrom;
 
 use anyhow::{bail, Error};
 
+use crate::parser::model::STACK_BASE;
+
 /// List of registers
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub struct Register(u32);
@@ -133,9 +135,17 @@ impl TryFrom<&str> for Register {
 }
 
 /// Register file
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct RegisterFile {
     registers: [u32; 32],
+}
+
+impl Default for RegisterFile {
+    fn default() -> Self {
+        let mut registers = [0; 32];
+        registers[29] = STACK_BASE; // set the initial stack pointer
+        Self { registers }
+    }
 }
 
 impl RegisterFile {

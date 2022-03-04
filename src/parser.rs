@@ -14,6 +14,7 @@ use nom::{
 };
 use thiserror::Error;
 
+mod directives;
 mod instruction;
 mod label;
 pub mod model;
@@ -28,6 +29,8 @@ pub use opcode::opcode;
 pub use register::register;
 
 use model::{LabelTable, Line};
+
+use self::model::{Segment, Segments};
 
 #[derive(Error, Debug)]
 pub enum ParseError {
@@ -74,16 +77,18 @@ pub fn parse_string(input: &str) -> Result<Vec<Line>> {
 
 pub fn compute_labels(input: &[Line]) -> LabelTable {
     let mut labels = HashMap::new();
-    let mut pc = 0;
+    let mut segments = Segments::default();
+    let mut pc = segments.switch(Segment::Text);
 
     for line in input {
         match line {
             Line::Label(name) => {
-                labels.insert(name.clone(), pc);
+                labels.insert(name.clone(), *pc);
             }
             Line::Instruction(ins) => {
-                pc += ins.len() * 4;
+                *pc += ins.len() as u32 * 4;
             }
+            Line::Segment(seg) => pc = segments.switch(*seg),
         }
     }
     labels

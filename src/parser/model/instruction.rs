@@ -73,15 +73,6 @@ fn field(x: u32, start: u32, width: u32) -> u32 {
 
 impl Instruction {
     pub fn asm(&self, labels: &LabelTable, pc: u32) -> u32 {
-        if let Instruction::I { op, rt, rs, imm } = self {
-            if *op == Opcode::Op(0x04) {
-                println!("OP: {:032b}", field(op.value(), 26, 6));
-                println!("RS: {:032b}", field(rs.value(), 21, 5));
-                println!("RT: {:032b}", field(rt.value(), 16, 5));
-                println!("IMM: {:032b}", field(imm.asm(labels, pc), 0, 16));
-            }
-        }
-
         match self {
             Instruction::R {
                 op,
