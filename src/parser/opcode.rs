@@ -1,26 +1,29 @@
+use super::directives::{ascii_lit, segment, word_lit};
 use super::instruction::{
-    ascii_lit, branch_type, i_type, j_type, jr_type, li_ins, load_type, move_ins, nop, r_type,
-    syscall, word_lit,
+    branch_type, i_type, j_type, jr_type, li_ins, load_type, lui, move_ins, nop, r_type, syscall,
 };
-use super::model::{Instruction, Opcode};
-use super::ParseError;
+use super::model::{Line, Opcode, Segment};
+
 use nom::combinator::fail;
-use nom::error::{context, ErrorKind, FromExternalError, VerboseError};
+use nom::error::{context, VerboseError};
 use nom::{bytes::complete::take_till, combinator::map_res, IResult};
 
-type InsParser = fn(&str, Opcode) -> IResult<&str, Vec<Instruction>, VerboseError<&str>>;
+type InsParser = fn(&str, Opcode) -> IResult<&str, Line, VerboseError<&str>>;
 
 const NO_PARSER: InsParser = |input, _| context("No parser for instruction", fail)(input);
 
+/// Holds a parsed opcode and a nom parser that can parse its arguments and produce an Instruction
+/// object
 pub struct InstructionParser {
     op: Opcode,
-    parser: Box<dyn Fn(&str, Opcode) -> IResult<&str, Vec<Instruction>, VerboseError<&str>>>,
+    parser: Box<dyn Fn(&str, Opcode) -> IResult<&str, Line, VerboseError<&str>>>,
 }
 
 impl InstructionParser {
+    /// Create a normal parser that needs to know its own opcode
     pub fn new<F>(op: Opcode, parser: F) -> Self
     where
-        F: Fn(&str, Opcode) -> IResult<&str, Vec<Instruction>, VerboseError<&str>> + 'static,
+        F: Fn(&str, Opcode) -> IResult<&str, Line, VerboseError<&str>> + 'static,
     {
         Self {
             op,
@@ -28,9 +31,10 @@ impl InstructionParser {
         }
     }
 
+    /// Creates a pseudo instruction parser that doesn't need to know its own opcode
     pub fn pseudo<F>(parser: F) -> Self
     where
-        F: Fn(&str) -> IResult<&str, Vec<Instruction>, VerboseError<&str>> + 'static,
+        F: Fn(&str) -> IResult<&str, Line, VerboseError<&str>> + 'static,
     {
         Self {
             op: Opcode::Op(0),
@@ -38,10 +42,8 @@ impl InstructionParser {
         }
     }
 
-    pub fn parse<'a>(
-        &self,
-        input: &'a str,
-    ) -> IResult<&'a str, Vec<Instruction>, VerboseError<&'a str>> {
+    /// Run the parser contained in this object
+    pub fn parse<'a>(&self, input: &'a str) -> IResult<&'a str, Line, VerboseError<&'a str>> {
         (self.parser)(input, self.op)
     }
 }
@@ -70,8 +72,9 @@ pub fn opcode(input: &str) -> IResult<&str, InstructionParser, VerboseError<&str
                 "jr" => Ok(InstructionParser::new(Opcode::Funct(0x08), jr_type)),
                 "lw" => Ok(InstructionParser::new(Opcode::Op(0x23), load_type)),
                 "sw" => Ok(InstructionParser::new(Opcode::Op(0x2b), load_type)),
-                "lui" => Ok(InstructionParser::new(Opcode::Op(0x0f), NO_PARSER)),
+                "lui" => Ok(InstructionParser::new(Opcode::Op(0x0f), lui)),
                 "slt" => Ok(InstructionParser::new(Opcode::Funct(0x2a), NO_PARSER)),
+                "ori" => Ok(InstructionParser::new(Opcode::Op(0x0d), i_type)),
                 "move" => Ok(InstructionParser::pseudo(move_ins)),
                 "li" => Ok(InstructionParser::pseudo(li_ins)),
                 "la" => Ok(InstructionParser::pseudo(li_ins)),
@@ -79,6 +82,8 @@ pub fn opcode(input: &str) -> IResult<&str, InstructionParser, VerboseError<&str
                 "nop" => Ok(InstructionParser::pseudo(nop)),
                 ".word" => Ok(InstructionParser::pseudo(word_lit)),
                 ".ascii" => Ok(InstructionParser::pseudo(ascii_lit)),
+                ".text" => Ok(InstructionParser::pseudo(|i| segment(i, Segment::Text))),
+                ".data" => Ok(InstructionParser::pseudo(|i| segment(i, Segment::Data))),
                 _ => Err(()),
             },
         ),

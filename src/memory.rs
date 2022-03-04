@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use thiserror::Error;
 
 /// Memory error struct
@@ -10,127 +12,48 @@ pub enum MemoryError {
 }
 
 /// Handles memory
-#[derive(Default)]
+///
+/// Memory is allocated in pages of words
+///
+/// Unaligned memory access is undefined
 pub struct Memory {
-    data: Vec<u8>,
+    data: HashMap<u32, Vec<u32>>,
+    page_size: usize,
+}
+
+impl Default for Memory {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Memory {
-    /// Create a new memory region with `size` bytes initialized to 0
-    pub fn new(size: usize) -> Self {
+    /// Create a new memory region with a default page size of 4KiB
+    pub fn new() -> Self {
         Self {
-            data: vec![0; size],
+            data: HashMap::new(),
+            page_size: 1024,
         }
     }
 
-    /// Creates a new memory region from an array
-    pub fn from_img<const SIZE: usize>(img: &[u8; SIZE]) -> Self {
-        Self { data: img.to_vec() }
-    }
+    pub fn get(&self, address: u32) -> u32 {
+        let aligned_address = address / 4;
+        let page_num = aligned_address / self.page_size as u32;
+        let page_offset = aligned_address - (self.page_size as u32 * page_num);
 
-    // Creates a new memory region from a vec
-    pub fn from_vec(img: Vec<u8>) -> Self {
-        Self { data: img }
-    }
-
-    // Create a new memory region from a word vec
-    pub fn from_word_vec(word_img: Vec<u32>) -> Self {
-        let mut img = Vec::with_capacity(word_img.len() * 4);
-        for word in word_img {
-            img.extend_from_slice(&word.to_le_bytes());
+        let page = self.data.get(&page_num);
+        match page {
+            Some(page) => page[page_offset as usize],
+            None => 0,
         }
-        Self { data: img }
     }
 
-    /// Creates a new memory region from an array of words
-    pub fn from_word_img<const SIZE: usize>(word_img: &[u32; SIZE]) -> Self {
-        let mut img = Vec::with_capacity(SIZE * 4);
-        for word in word_img {
-            img.extend_from_slice(&word.to_le_bytes());
-        }
-        Self { data: img }
-    }
+    pub fn get_mut(&mut self, address: u32) -> &mut u32 {
+        let aligned_address = address / 4;
+        let page_num = aligned_address / self.page_size as u32;
+        let page_offset = aligned_address - (self.page_size as u32 * page_num);
 
-    /// Read a byte from memory
-    pub fn read(&self, address: u32) -> Result<u8, MemoryError> {
-        Ok(*self
-            .data
-            .get(address as usize)
-            .ok_or(MemoryError::OutOfBounds {
-                index: address,
-                len: self.data.len(),
-            })?)
-    }
-
-    /// Read an aligned halfword from memory
-    pub fn read_half(&self, address: u32) -> Result<u16, MemoryError> {
-        // check that the address is halfword aligned
-        if address % 2 != 0 {
-            return Err(MemoryError::UnalignedAccess {
-                addr: address,
-                align: 2,
-            });
-        }
-        let lsb = self.read(address)? as u16;
-        let msb = self.read(address + 1)? as u16;
-        Ok((msb << 8) + lsb)
-    }
-
-    /// Read an aligned word from memory
-    pub fn read_word(&self, address: u32) -> Result<u32, MemoryError> {
-        // check that the address is word aligned
-        if address % 4 != 0 {
-            return Err(MemoryError::UnalignedAccess {
-                addr: address,
-                align: 4,
-            });
-        }
-        let lsh = self.read_half(address)? as u32;
-        let msh = self.read_half(address + 2)? as u32;
-        Ok((msh << 16) + lsh)
-    }
-
-    /// Write a byte to memory
-    pub fn write(&mut self, address: u32, data: u8) -> Result<(), MemoryError> {
-        self.data[address as usize] = data;
-        Ok(())
-    }
-
-    /// Write an aligned halfword to memory
-    pub fn write_half(&mut self, address: u32, data: u16) -> Result<(), MemoryError> {
-        if address % 2 != 0 {
-            return Err(MemoryError::UnalignedAccess {
-                addr: address,
-                align: 2,
-            });
-        }
-
-        let bytes = data.to_le_bytes();
-        self.data[address as usize] = bytes[0];
-        self.data[address as usize + 1] = bytes[1];
-        Ok(())
-    }
-
-    /// Write an aligned word to memory
-    pub fn write_word(&mut self, address: u32, data: u32) -> Result<(), MemoryError> {
-        if address + 3 >= self.data.len() as u32 {
-            return Err(MemoryError::OutOfBounds {
-                index: address,
-                len: self.data.len(),
-            });
-        }
-        if address % 4 != 0 {
-            return Err(MemoryError::UnalignedAccess {
-                addr: address,
-                align: 4,
-            });
-        }
-
-        let bytes = data.to_le_bytes();
-        self.data[address as usize] = bytes[0];
-        self.data[address as usize + 1] = bytes[1];
-        self.data[address as usize + 2] = bytes[2];
-        self.data[address as usize + 3] = bytes[3];
-        Ok(())
+        let page = self.data.entry(page_num).or_insert(vec![0; self.page_size]);
+        &mut page[page_offset as usize]
     }
 }

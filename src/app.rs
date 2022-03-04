@@ -32,6 +32,7 @@ pub struct App {
     script: String,
     console: Console,
     show_watches: bool,
+    show_stack: bool,
     watches: Vec<Watch>,
     running: bool,
 }
@@ -53,6 +54,7 @@ impl epi::App for App {
             script,
             console,
             show_watches,
+            show_stack,
             watches,
             running,
         } = self;
@@ -87,6 +89,16 @@ impl epi::App for App {
                     //     ui.close_menu();
                     // }
                 });
+                ui.menu_button("View", |ui| {
+                    if ui.button("Watches").clicked() {
+                        *show_watches = true;
+                        ui.close_menu();
+                    }
+                    if ui.button("Toggle Stack View").clicked() {
+                        *show_stack = !*show_stack;
+                        ui.close_menu();
+                    }
+                });
             });
 
             // draw toolbar
@@ -119,6 +131,16 @@ impl epi::App for App {
                     }
                 }
             });
+
+        if *show_stack {
+            // Display the stack in a sidebar
+            egui::SidePanel::right("stack").show(ctx, |ui| {
+                ui.heading("Stack");
+                for item in machine.stack().iter().rev() {
+                    ui.label(item.to_string());
+                }
+            });
+        }
 
         egui::CentralPanel::default().show(ctx, |ui| ui.add(Editor::new(script)));
     }

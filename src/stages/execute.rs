@@ -37,6 +37,7 @@ pub mod op_ctrl {
     pub const OP_OR: u8 = 2;
     pub const OP_ADD: u8 = 3;
     pub const OP_SUB: u8 = 4;
+    pub const OP_UPPER: u8 = 5;
 }
 use op_ctrl::*;
 
@@ -67,6 +68,7 @@ pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
         OP_SUB => (false, true, ALU_ADD),
         OP_AND => (false, false, ALU_AND),
         OP_OR => (false, false, ALU_OR),
+        OP_UPPER => (false, false, ALU_UPPER),
         _ => {
             panic!("Unknown Instruction")
         }
@@ -136,6 +138,7 @@ pub mod alu_signals {
     pub const ALU_SLL: u8 = 4;
     pub const ALU_SRL: u8 = 5;
     pub const ALU_SRA: u8 = 6;
+    pub const ALU_UPPER: u8 = 7;
 }
 use alu_signals::*;
 
@@ -160,6 +163,8 @@ pub fn alu(a: u32, b: u32, op: (bool, bool, u8)) -> u32 {
         // Rust uses signedness to select between logical and arithmetic right shifts
         ALU_SRL => a.overflowing_shr(b).0,
         ALU_SRA => (a as i32).overflowing_shr(b).0 as u32,
+
+        ALU_UPPER => dbg!(dbg!(b) << 16),
 
         ALU_SLT => {
             if a < b {

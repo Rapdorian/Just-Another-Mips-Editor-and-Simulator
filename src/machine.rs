@@ -1,10 +1,13 @@
 use std::ops::ControlFlow;
 
 use crate::{
-    parser::{self, compute_labels, model::Line},
+    parser::{
+        self, compute_labels,
+        model::{Line, Segment, Segments, STACK_BASE, TEXT_BASE},
+    },
     pipeline::{self, PipelineState},
     syscall::{resolve_syscall, Syscall},
-    Memory, Register, RegisterFile,
+    Memory, Register, RegisterFile, SP,
 };
 use anyhow::Result;
 
@@ -29,11 +32,11 @@ impl Machine {
     }
 
     pub fn read_word(&self, addr: u32) -> u32 {
-        self.mem.read_word(addr).unwrap_or(0)
+        self.mem.get(addr)
     }
 
     pub fn write_word(&mut self, addr: u32, val: u32) {
-        self.mem.write_word(addr, val).unwrap_or(()); // TODO: This is a bad idea
+        *self.mem.get_mut(addr) = val;
     }
 
     /// Reset this machine so it can be ran again
@@ -41,7 +44,7 @@ impl Machine {
     /// Note that this will not reset the contents of memory or registers for that see
     /// [`hard_reset`]
     pub fn reset(&mut self) {
-        self.pc = 0;
+        self.pc = TEXT_BASE;
         self.state = PipelineState::default();
     }
 
@@ -55,6 +58,16 @@ impl Machine {
     /// Set the contents of this machines memory to `mem`
     pub fn flash(&mut self, mem: Memory) {
         self.mem = mem;
+    }
+
+    /// Get the current contents of the stack
+    pub fn stack(&mut self) -> Vec<u32> {
+        let sp = self.regs.read_register(SP) / 4;
+        let mut stack = vec![];
+        for i in sp..STACK_BASE / 4 {
+            stack.push(self.mem.get(i * 4));
+        }
+        stack
     }
 
     pub fn resolve_input(&mut self, input: &str) -> Result<()> {
@@ -100,26 +113,30 @@ impl Machine {
     }
 }
 
+/// Method that create a memory instance from a script file
 pub fn assembler(script: &str) -> Result<Memory> {
     // parse assembly
     let lines = parser::parse_string(script)?;
     let labels = compute_labels(&lines);
 
     // for each line in the parsed assembly assemble that line and add the result to a vec
-    let mut raw_mem = vec![];
-    let mut assembler_pc = 0;
+    let mut memory = Memory::new();
+    let mut segments = Segments::default();
+    // current segement pc
+    let mut pc = segments.switch(Segment::Text);
     for line in &lines {
         match line {
             Line::Instruction(ins) => {
                 for word in ins {
-                    raw_mem.push(word.asm(&labels, assembler_pc));
-                    assembler_pc += 4;
+                    let bin = word.asm(&labels, *pc);
+                    println!("{pc:X} {bin:X}\t{word:?}");
+                    *memory.get_mut(*pc) = bin;
+                    *pc += 4;
                 }
             }
+            Line::Segment(seg) => pc = segments.switch(*seg),
             Line::Label(_) => {}
         }
     }
-
-    // create our memory object
-    Ok(Memory::from_word_vec(raw_mem))
+    Ok(memory)
 }

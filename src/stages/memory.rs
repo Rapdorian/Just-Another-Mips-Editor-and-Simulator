@@ -30,12 +30,10 @@ pub fn memory(pc: &mut u32, memory: &mut Memory, input: ExMem) -> MemWb {
 
     // handle memory accesses
     if input.write {
-        memory
-            .write_word(input.alu_result, input.write_data)
-            .unwrap();
+        *memory.get_mut(input.alu_result) = input.write_data;
     }
     if input.read {
-        read_data = memory.read_word(input.alu_result).unwrap();
+        read_data = memory.get(input.alu_result);
     }
 
     if input.branch && input.zero {
