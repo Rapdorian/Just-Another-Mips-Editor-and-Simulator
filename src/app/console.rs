@@ -84,7 +84,8 @@ impl<'a> TextBuffer for ConsoleView<'a> {
 
     fn insert_text(&mut self, text: &str, char_index: usize) -> usize {
         if self.cursor > char_index {
-            0
+            self.text.push_str(text);
+            text.len()
         } else {
             self.text.insert_str(char_index, text);
             text.len()

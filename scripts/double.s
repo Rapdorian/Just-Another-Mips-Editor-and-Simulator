@@ -7,6 +7,7 @@ syscall
 
 add $t0 $v0, $v0
 
+# ?HI
 la $a0, disp
 li $v0, 4
 syscall

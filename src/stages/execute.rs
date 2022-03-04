@@ -44,6 +44,7 @@ use op_ctrl::*;
 /// Runs execute stage
 pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
     let syscall = input.syscall;
+    let mut use_shamt = false;
     // compute ALU control lines
     let alu_ctrl = match input.alu_op {
         OP_R => {
@@ -55,10 +56,24 @@ pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
                 0x2a => (false, false, ALU_SLT), // slt
                 0x25 => (false, false, ALU_OR),  // or
                 0x27 => (true, true, ALU_AND),   // nor
-                0x00 => (false, false, ALU_SLL), // sll
-                0x02 => (false, false, ALU_SRL), // srl
-                0x03 => (false, false, ALU_SRA), // sra
                 0x0c => (false, false, ALU_ADD), // syscall
+                0x06 => (false, false, ALU_SRL), // srlv
+                0x26 => (false, false, ALU_XOR), // xor
+                0x00 => {
+                    // sll
+                    use_shamt = true;
+                    (false, false, ALU_SLL)
+                }
+                0x02 => {
+                    // srl
+                    use_shamt = true;
+                    (false, false, ALU_SRL)
+                }
+                0x03 => {
+                    // sra
+                    use_shamt = true;
+                    (false, false, ALU_SRA)
+                }
                 _ => {
                     panic!("Unkown funct: {}", input.op_funct)
                 }
@@ -101,12 +116,9 @@ pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
 
     // check if we are using a shift operation.
     // and load the shamt if so
-    match alu_ctrl.2 {
-        ALU_SLL | ALU_SRL | ALU_SRA => {
-            arg1 = arg2;
-            arg2 = input.shamt;
-        }
-        _ => {}
+    if use_shamt {
+        arg1 = arg2;
+        arg2 = input.shamt;
     }
 
     let result = alu(arg1, arg2, alu_ctrl);
@@ -139,6 +151,7 @@ pub mod alu_signals {
     pub const ALU_SRL: u8 = 5;
     pub const ALU_SRA: u8 = 6;
     pub const ALU_UPPER: u8 = 7;
+    pub const ALU_XOR: u8 = 8;
 }
 use alu_signals::*;
 
@@ -159,6 +172,7 @@ pub fn alu(a: u32, b: u32, op: (bool, bool, u8)) -> u32 {
         ALU_OR => a | b,
         ALU_ADD => arith_a.overflowing_add(arith_b).0,
         ALU_SLL => a.overflowing_shl(b).0,
+        ALU_XOR => a ^ b,
 
         // Rust uses signedness to select between logical and arithmetic right shifts
         ALU_SRL => a.overflowing_shr(b).0,

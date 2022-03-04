@@ -1,4 +1,4 @@
-use eframe::egui::{Response, TextBuffer, TextEdit, Ui, Widget};
+use eframe::egui::{Response, ScrollArea, TextBuffer, TextEdit, Ui, Widget};
 
 pub struct Editor<'a> {
     text: &'a mut dyn TextBuffer,
@@ -12,9 +12,11 @@ impl<'a> Editor<'a> {
 
 impl<'a> Widget for Editor<'a> {
     fn ui(self, ui: &mut Ui) -> Response {
-        ui.add_sized(
-            ui.available_size(),
-            TextEdit::multiline(self.text).code_editor(),
-        )
+        ScrollArea::vertical().show(ui, |ui| {
+            ui.add_sized(
+                ui.available_size(),
+                TextEdit::multiline(self.text).code_editor(),
+            )
+        })
     }
 }
