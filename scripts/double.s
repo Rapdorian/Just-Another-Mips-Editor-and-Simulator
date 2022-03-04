@@ -7,6 +7,7 @@ syscall
 
 add $t0 $v0, $v0
 
+# ?HI
 la $a0, disp
 li $v0, 4
 syscall
@@ -20,6 +21,6 @@ syscall
 
 .data
 prompt:
-.ascii "Enter number to double:\n\0"
+.asciiz "Enter number to double:\n"
 disp:
-.ascii "Result:\n\0"
+.asciiz "Result:\n"

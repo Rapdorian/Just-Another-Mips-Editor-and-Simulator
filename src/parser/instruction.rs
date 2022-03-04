@@ -1,10 +1,10 @@
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{alphanumeric1, multispace0},
-    combinator::map,
+    character::complete::{alphanumeric1, multispace0, space1},
+    combinator::{map, peek},
     error::{context, VerboseError},
-    sequence::{delimited, preceded, tuple},
+    sequence::{delimited, preceded, terminated, tuple},
     IResult,
 };
 
@@ -13,16 +13,24 @@ use crate::{
     AT, ZERO,
 };
 
-use super::model::{Imm, Instruction, Line, Symbol};
+use super::{
+    int,
+    label::identifier,
+    model::{Imm, Instruction, Line, Symbol},
+};
 
 fn immediate(input: &str) -> IResult<&str, Imm, VerboseError<&str>> {
     preceded(
         multispace0,
         alt((
             map(parser::int, |x: i64| Imm::Value(x)),
-            map(alphanumeric1, |x: &str| Imm::Label(x.to_string())),
+            map(identifier, |x: &str| Imm::Label(x.to_string())),
         )),
     )(input)
+}
+
+fn separator(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
+    context("separator", delimited(multispace0, tag(","), multispace0))(input)
 }
 
 fn symbol(input: &str) -> IResult<&str, Symbol, VerboseError<&str>> {
@@ -30,7 +38,7 @@ fn symbol(input: &str) -> IResult<&str, Symbol, VerboseError<&str>> {
         multispace0,
         alt((
             map(parser::int, |x: u32| Symbol::Address(x)),
-            map(alphanumeric1, |x: &str| Symbol::Label(x.to_string())),
+            map(identifier, |x: &str| Symbol::Label(x.to_string())),
         )),
     )(input)
 }
@@ -75,10 +83,9 @@ pub fn jr_type(input: &str, op: Opcode) -> ParserOutput {
 /// Parses simple R-type instructions using the format
 /// `<OP> <rd>, <rs>, <rt>`
 pub fn r_type(input: &str, op: Opcode) -> ParserOutput {
-    let (input, (rd, rs, rt)) = context(
-        "Expected format <op> rd, rs, rt",
-        tuple((parser::register, parser::register, parser::register)),
-    )(input)?;
+    let (input, rd) = context("Destination Register", parser::register)(input)?;
+    let (input, rs) = context("Source Register", preceded(separator, parser::register))(input)?;
+    let (input, rt) = context("Target Register", preceded(separator, parser::register))(input)?;
     Ok((
         input,
         Line::Instruction(vec![Instruction::R {
@@ -91,12 +98,38 @@ pub fn r_type(input: &str, op: Opcode) -> ParserOutput {
     ))
 }
 
+/// Parses shift style instructions
+/// `<OP> <rd>, <rs>, shamt`
+pub fn shift_type(input: &str, op: Opcode) -> ParserOutput {
+    let (input, rd) = context("Expected Destination register", parser::register)(input)?;
+    let (input, rt) = context(
+        "Expected Target register",
+        preceded(separator, parser::register),
+    )(input)?;
+    let (input, shamt): (&str, i64) =
+        context("Expected shift amount", preceded(separator, int))(input)?;
+    let shamt = shamt as u32;
+    Ok((
+        input,
+        Line::Instruction(vec![Instruction::R {
+            op,
+            rd,
+            rs: ZERO,
+            rt,
+            shamt,
+        }]),
+    ))
+}
+
 /// Parses simple immediate mode instructions using the format
 /// `<OP> <rt> <rs> <imm>`
 pub fn i_type(input: &str, op: Opcode) -> ParserOutput {
     let (input, rt) = context("Expected target register", parser::register)(input)?;
-    let (input, rs) = context("Expected source register", parser::register)(input)?;
-    let (input, imm) = context("Expected immediate value", immediate)(input)?;
+    let (input, rs) = context(
+        "Expected source register",
+        preceded(separator, parser::register),
+    )(input)?;
+    let (input, imm) = context("Expected immediate value", preceded(separator, immediate))(input)?;
     Ok((
         input,
         Line::Instruction(vec![Instruction::I { op, rt, rs, imm }]),
@@ -107,7 +140,7 @@ pub fn i_type(input: &str, op: Opcode) -> ParserOutput {
 /// `<OP> <rt> <imm>`
 pub fn lui(input: &str, op: Opcode) -> ParserOutput {
     let (input, rt) = context("Expected target register", parser::register)(input)?;
-    let (input, imm) = context("Expected immediate value", immediate)(input)?;
+    let (input, imm) = context("Expected immediate value", preceded(separator, immediate))(input)?;
     Ok((
         input,
         Line::Instruction(vec![Instruction::I {
@@ -123,7 +156,7 @@ pub fn lui(input: &str, op: Opcode) -> ParserOutput {
 /// `<OP> <rt> <imm>(<rs>)
 pub fn load_type(input: &str, op: Opcode) -> ParserOutput {
     let (input, rt) = context("Expected target register", parser::register)(input)?;
-    let (input, imm) = context("Expected offset value", immediate)(input)?;
+    let (input, imm) = context("Expected offset value", preceded(separator, immediate))(input)?;
     let (input, rs) = context(
         "Expected source value",
         delimited(tag("("), parser::register, tag(")")),
@@ -138,8 +171,11 @@ pub fn load_type(input: &str, op: Opcode) -> ParserOutput {
 /// `<OP> <rt> <rs> <label>`
 pub fn branch_type(input: &str, op: Opcode) -> ParserOutput {
     let (input, rt) = context("Expected first register", parser::register)(input)?;
-    let (input, rs) = context("Expected second register", parser::register)(input)?;
-    let (input, mut imm) = context("Expected label", immediate)(input)?;
+    let (input, rs) = context(
+        "Expected second register",
+        preceded(separator, parser::register),
+    )(input)?;
+    let (input, mut imm) = context("Expected label", preceded(separator, immediate))(input)?;
 
     // if we got a label make it pc relative
     if let Imm::Label(label) = imm {
@@ -158,7 +194,10 @@ pub fn branch_type(input: &str, op: Opcode) -> ParserOutput {
 /// Parses a move pseudoinstruction
 pub fn move_ins(input: &str) -> ParserOutput {
     let (input, rd) = context("Expected destination register", parser::register)(input)?;
-    let (input, rs) = context("Expected source register", parser::register)(input)?;
+    let (input, rs) = context(
+        "Expected source register",
+        preceded(separator, parser::register),
+    )(input)?;
     Ok((
         input,
         Line::Instruction(vec![Instruction::R {
@@ -176,7 +215,7 @@ pub fn li_ins(input: &str) -> ParserOutput {
     // li and la are the same
     map(
         map(
-            tuple((parser::register, immediate)),
+            tuple((parser::register, preceded(separator, immediate))),
             |(reg, imm)| match imm {
                 Imm::Label(ref name) => vec![
                     // TODO: Make loads >16bits work
@@ -259,6 +298,9 @@ pub fn nop(input: &str) -> ParserOutput {
 
 pub fn instruction(input: &str) -> IResult<&str, Line, VerboseError<&str>> {
     // grab the opcode
-    let (input, parser) = preceded(multispace0, parser::opcode)(input)?;
+    let (input, parser) = preceded(
+        multispace0,
+        terminated(parser::opcode, alt((space1, peek(tag("\n"))))),
+    )(input)?;
     parser.parse(input)
 }

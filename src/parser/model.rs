@@ -44,6 +44,7 @@ pub enum Line {
     Instruction(Vec<Instruction>),
     Label(String),
     Segment(Segment),
+    Comment(String),
 }
 
 pub type LabelTable = HashMap<String, u32>;

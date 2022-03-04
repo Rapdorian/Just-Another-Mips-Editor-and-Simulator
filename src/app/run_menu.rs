@@ -129,7 +129,7 @@ impl<'a> Widget for RunMenu<'a> {
             self.machine.handle_syscall(|syscall| match syscall {
                 Syscall::Print(out) => ControlFlow::Break(print.push_str(&out)),
                 Syscall::Error(out) => {
-                    ControlFlow::Break(print.push_str(&format!("\nERROR: {out}\n")))
+                    ControlFlow::Break(print.push_str(&format!("\n\x07ERROR: {out}\x1b\n")))
                 }
                 Syscall::Quit => ControlFlow::Break(running = false),
                 _ => ControlFlow::Continue(()),

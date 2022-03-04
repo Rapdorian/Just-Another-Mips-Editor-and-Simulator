@@ -22,9 +22,7 @@ pub fn register_name(input: &str) -> IResult<&str, Register, VerboseError<&str>>
 }
 
 pub fn register(input: &str) -> IResult<&str, Register, VerboseError<&str>> {
-    let (input, _) = multispace0(input)?;
     let (input, _) = context("Expected '$' to prepend register", tag("$"))(input)?;
     let (input, reg) = register_name(input)?;
-    let (input, _) = opt(tag(","))(input)?;
     Ok((input, reg))
 }

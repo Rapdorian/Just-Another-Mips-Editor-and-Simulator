@@ -136,6 +136,7 @@ pub fn assembler(script: &str) -> Result<Memory> {
             }
             Line::Segment(seg) => pc = segments.switch(*seg),
             Line::Label(_) => {}
+            Line::Comment(_) => {}
         }
     }
     Ok(memory)

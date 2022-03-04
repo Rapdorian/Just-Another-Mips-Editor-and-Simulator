@@ -1,6 +1,7 @@
-use super::directives::{ascii_lit, segment, word_lit};
+use super::directives::{ascii_lit, asciiz_lit, segment, word_lit};
 use super::instruction::{
-    branch_type, i_type, j_type, jr_type, li_ins, load_type, lui, move_ins, nop, r_type, syscall,
+    branch_type, i_type, j_type, jr_type, li_ins, load_type, lui, move_ins, nop, r_type,
+    shift_type, syscall,
 };
 use super::model::{Line, Opcode, Segment};
 
@@ -75,6 +76,13 @@ pub fn opcode(input: &str) -> IResult<&str, InstructionParser, VerboseError<&str
                 "lui" => Ok(InstructionParser::new(Opcode::Op(0x0f), lui)),
                 "slt" => Ok(InstructionParser::new(Opcode::Funct(0x2a), NO_PARSER)),
                 "ori" => Ok(InstructionParser::new(Opcode::Op(0x0d), i_type)),
+                "or" => Ok(InstructionParser::new(Opcode::Funct(0x25), r_type)),
+                "xor" => Ok(InstructionParser::new(Opcode::Funct(0x26), r_type)),
+                "nor" => Ok(InstructionParser::new(Opcode::Funct(0x27), r_type)),
+                "sll" => Ok(InstructionParser::new(Opcode::Funct(0x0), shift_type)),
+                "srl" => Ok(InstructionParser::new(Opcode::Funct(0x2), shift_type)),
+                "sra" => Ok(InstructionParser::new(Opcode::Funct(0x3), shift_type)),
+                "srlv" => Ok(InstructionParser::new(Opcode::Funct(0x6), r_type)),
                 "move" => Ok(InstructionParser::pseudo(move_ins)),
                 "li" => Ok(InstructionParser::pseudo(li_ins)),
                 "la" => Ok(InstructionParser::pseudo(li_ins)),
@@ -82,6 +90,7 @@ pub fn opcode(input: &str) -> IResult<&str, InstructionParser, VerboseError<&str
                 "nop" => Ok(InstructionParser::pseudo(nop)),
                 ".word" => Ok(InstructionParser::pseudo(word_lit)),
                 ".ascii" => Ok(InstructionParser::pseudo(ascii_lit)),
+                ".asciiz" => Ok(InstructionParser::pseudo(asciiz_lit)),
                 ".text" => Ok(InstructionParser::pseudo(|i| segment(i, Segment::Text))),
                 ".data" => Ok(InstructionParser::pseudo(|i| segment(i, Segment::Data))),
                 _ => Err(()),
