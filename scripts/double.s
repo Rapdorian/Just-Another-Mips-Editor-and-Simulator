@@ -20,6 +20,6 @@ syscall
 
 .data
 prompt:
-.ascii "Enter number to double:\n\0"
+.asciiz "Enter number to double:\n"
 disp:
-.ascii "Result:\n\0"
+.asciiz "Result:\n"

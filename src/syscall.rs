@@ -45,7 +45,7 @@ pub fn handle_syscall(reg_file: &mut RegisterFile, mem: &mut Memory) -> Result<S
                 ptr += 1;
                 b = mem.get(ptr) as u8;
             }
-            let s = String::from_utf8(buffer)?;
+            let s = String::from_utf8(dbg!(buffer))?;
             Ok(Syscall::Print(format!("{}", s)))
         }
         5 => Ok(Syscall::ReadInt),
