@@ -7,7 +7,7 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, take_till, take_while},
     character::complete::{multispace0, space0, space1},
-    combinator::{eof, map},
+    combinator::{eof, map, opt},
     error::{context, VerboseError, VerboseErrorKind},
     multi::many_till,
     sequence::{delimited, preceded, terminated},
@@ -65,12 +65,17 @@ where
     nom::error::convert_error(input, VerboseError { errors })
 }
 
+pub fn blank(input: &str) -> IResult<&str, Line, VerboseError<&str>> {
+    let (input, _) = preceded(space0, alt((tag("\n"), eof, map(comment, |_| ""))))(input)?;
+    Ok((input, Line::Blank))
+}
+
 pub fn comment(input: &str) -> IResult<&str, Line, VerboseError<&str>> {
     context(
         "Parsing comment",
         map(
             preceded(
-                preceded(multispace0, context("Comments begin with a #", tag("#"))),
+                preceded(space0, context("Comments begin with a #", tag("#"))),
                 context("Comment body", take_while(|c| c != '\n')),
             ),
             |x: &str| Line::Comment(x.to_string()),
@@ -82,7 +87,7 @@ pub fn parse_line(input: &str) -> IResult<&str, Line, VerboseError<&str>> {
     context(
         "Parsing Line",
         delimited(
-            multispace0,
+            space0,
             instruction,
             context(
                 "Instructions must be on their own lines",
@@ -93,28 +98,41 @@ pub fn parse_line(input: &str) -> IResult<&str, Line, VerboseError<&str>> {
 }
 
 pub fn parse_string(input: &str) -> Result<Vec<Line>> {
-    let (_, (output, _)) = many_till(alt((comment, label, parse_line)), eof)(input)
-        .finish()
-        .map_err(|e| anyhow!("{}", convert_error(input, e)))?;
+    let (_, (output, _)) = many_till(
+        alt((
+            blank,
+            comment,
+            terminated(label, preceded(space0, opt(tag("\n")))),
+            parse_line,
+        )),
+        eof,
+    )(input)
+    .finish()
+    .map_err(|e| anyhow!("{}", convert_error(input, e)))?;
+
+    println!("{:#?}", output);
     Ok(output)
 }
 
 pub fn compute_labels(input: &[Line]) -> LabelTable {
-    let mut labels = HashMap::new();
+    let mut labels = LabelTable::default();
     let mut segments = Segments::default();
     let mut pc = segments.switch(Segment::Text);
 
-    for line in input {
+    for (i, line) in input.iter().enumerate() {
         match line {
             Line::Label(name) => {
-                labels.insert(name.clone(), *pc);
+                labels.insert_label(name.clone(), *pc);
             }
             Line::Instruction(ins) => {
+                labels.insert_line(i, *pc);
                 *pc += ins.len() as u32 * 4;
             }
             Line::Segment(seg) => pc = segments.switch(*seg),
-            Line::Comment(_) => {}
+            _ => {}
         }
     }
+
+    std::fs::write("labels.txt", format!("{:#?}", input)).unwrap();
     labels
 }

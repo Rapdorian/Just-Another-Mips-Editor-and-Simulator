@@ -1,22 +1,149 @@
-use eframe::egui::{Response, ScrollArea, TextBuffer, TextEdit, Ui, Widget};
+use std::sync::Arc;
+
+use eframe::egui::{
+    text::LayoutJob, Align2, Color32, Galley, Response, ScrollArea, TextEdit, TextFormat,
+    TextStyle, Ui, Widget,
+};
 
 pub struct Editor<'a> {
-    text: &'a mut dyn TextBuffer,
+    text: &'a mut String,
+    pc: &'a [Option<usize>],
 }
 
 impl<'a> Editor<'a> {
-    pub fn new(text: &'a mut dyn TextBuffer) -> Self {
-        Self { text }
+    pub fn new(text: &'a mut String, pc: &'a [Option<usize>]) -> Self {
+        Self { text, pc }
     }
 }
 
 impl<'a> Widget for Editor<'a> {
     fn ui(self, ui: &mut Ui) -> Response {
+        let Self { text, pc } = self;
         ScrollArea::vertical().show(ui, |ui| {
-            ui.add_sized(
+            let resp = ui.add_sized(
                 ui.available_size(),
-                TextEdit::multiline(self.text).code_editor(),
-            )
+                TextEdit::multiline(text)
+                    .code_editor()
+                    .layouter(&mut |ui, s, ww| layouter(ui, s, ww, pc)),
+            );
+
+            // create line string
+            let line_numbers = text
+                .lines()
+                .enumerate()
+                .fold(String::new(), |acc, (i, _)| format!("{acc}{}\n", i + 1));
+
+            let origin = resp.rect.min;
+            println!(
+                "{:?}",
+                ui.painter().text(
+                    origin,
+                    Align2::LEFT_TOP,
+                    &line_numbers,
+                    TextStyle::Monospace,
+                    ui.style().visuals.widgets.noninteractive.fg_stroke.color,
+                )
+            );
+            resp
         })
     }
+}
+
+pub fn layouter<'a>(
+    ui: &Ui,
+    string: &str,
+    wrap_width: f32,
+    pc: &'a [Option<usize>],
+) -> Arc<Galley> {
+    let mut layout = LayoutJob::default();
+
+    let fetch = Color32::from_rgb(102, 57, 49);
+    let decode = Color32::from_rgb(82, 75, 36);
+    let execute = Color32::from_rgb(50, 60, 57);
+    let memory = Color32::from_rgb(63, 63, 115);
+    let writeback = Color32::from_rgb(69, 40, 60);
+
+    for (i, line) in string.lines().enumerate() {
+        let bg = if pc[4].map(|x| x == i).unwrap_or(false) {
+            writeback
+        } else if pc[3].map(|x| x == i).unwrap_or(false) {
+            memory
+        } else if pc[2].map(|x| x == i).unwrap_or(false) {
+            execute
+        } else if pc[1].map(|x| x == i).unwrap_or(false) {
+            decode
+        } else if pc[0].map(|x| x == i).unwrap_or(false) {
+            fetch
+        } else {
+            ui.style().visuals.extreme_bg_color
+        };
+
+        let mut span = String::new();
+        let mut comment = false;
+        let mut idx = 0;
+        let mut indent = true;
+        let fg = ui.style().visuals.widgets.noninteractive.fg_stroke.color;
+
+        let handle_token = |span: &mut String,
+                            comment: &mut bool,
+                            idx: &mut usize,
+                            indent: &mut bool,
+                            layout: &mut LayoutJob| {
+            if span.starts_with("#") {
+                *comment = true;
+            }
+            let fg = if *comment {
+                Color32::from_rgb(155, 173, 183)
+            } else {
+                if *idx == 0 {
+                    if span.starts_with(".") {
+                        Color32::from_rgb(95, 205, 228)
+                    } else {
+                        Color32::from_rgb(217, 87, 99)
+                    }
+                } else {
+                    if span.starts_with("$") {
+                        Color32::from_rgb(106, 190, 48)
+                    } else {
+                        fg
+                    }
+                }
+            };
+
+            layout.append(
+                &format!("{span}"),
+                if *indent { 30.0 } else { 0.0 },
+                TextFormat {
+                    style: TextStyle::Monospace,
+                    background: bg,
+                    color: fg,
+                    ..TextFormat::default()
+                },
+            );
+            if span.trim().len() > 0 {
+                *idx += 1;
+            }
+            *indent = false;
+            span.clear();
+        };
+
+        for c in line.chars() {
+            // handle syntax
+            if c.is_whitespace() {
+                span.push(c);
+                handle_token(&mut span, &mut comment, &mut idx, &mut indent, &mut layout);
+            } else if c == ',' {
+                handle_token(&mut span, &mut comment, &mut idx, &mut indent, &mut layout);
+                span.push(',');
+                handle_token(&mut span, &mut comment, &mut idx, &mut indent, &mut layout);
+            } else {
+                span.push(c);
+            }
+        }
+        span.push('\n');
+        handle_token(&mut span, &mut comment, &mut idx, &mut indent, &mut layout);
+    }
+
+    layout.wrap_width = wrap_width;
+    ui.fonts().layout_job(layout)
 }

@@ -12,7 +12,7 @@ pub enum Symbol {
 impl Symbol {
     pub fn asm(&self, labels: &LabelTable) -> u32 {
         (match self {
-            Symbol::Label(ref name) => labels[name] as u32,
+            Symbol::Label(ref name) => labels.get_label(name).unwrap_or(0),
             Symbol::Address(x) => *x,
         } & 0x0FFFFFFF)
             >> 2
@@ -31,12 +31,12 @@ pub enum Imm {
 impl Imm {
     pub fn asm(&self, labels: &LabelTable, pc: u32) -> u32 {
         match self {
-            Imm::Label(ref name) => labels[name] as u32,
-            Imm::HighHWord(ref name) => (labels[name] as u32 & 0xFFFF0000) >> 16,
-            Imm::LowHWord(ref name) => labels[name] as u32 & 0xFFFF,
+            Imm::Label(ref name) => labels.get_label(name).unwrap_or(0),
+            Imm::HighHWord(ref name) => (labels.get_label(name).unwrap_or(0) & 0xFFFF0000) >> 16,
+            Imm::LowHWord(ref name) => labels.get_label(name).unwrap_or(0) & 0xFFFF,
             Imm::Value(x) => *x as u32,
             Imm::PcRelative(ref name) => {
-                let offset = (labels[name] as u32).wrapping_sub(pc + 4 as u32) >> 2;
+                let offset = (labels.get_label(name).unwrap_or(0)).wrapping_sub(pc + 4 as u32) >> 2;
                 offset
             }
         }

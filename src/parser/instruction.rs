@@ -1,7 +1,7 @@
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{alphanumeric1, multispace0, space1},
+    character::complete::{alphanumeric1, space0, space1},
     combinator::{map, peek},
     error::{context, VerboseError},
     sequence::{delimited, preceded, terminated, tuple},
@@ -21,7 +21,7 @@ use super::{
 
 fn immediate(input: &str) -> IResult<&str, Imm, VerboseError<&str>> {
     preceded(
-        multispace0,
+        space0,
         alt((
             map(parser::int, |x: i64| Imm::Value(x)),
             map(identifier, |x: &str| Imm::Label(x.to_string())),
@@ -30,12 +30,12 @@ fn immediate(input: &str) -> IResult<&str, Imm, VerboseError<&str>> {
 }
 
 fn separator(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
-    context("separator", delimited(multispace0, tag(","), multispace0))(input)
+    context("separator", delimited(space0, tag(","), space0))(input)
 }
 
 fn symbol(input: &str) -> IResult<&str, Symbol, VerboseError<&str>> {
     preceded(
-        multispace0,
+        space0,
         alt((
             map(parser::int, |x: u32| Symbol::Address(x)),
             map(identifier, |x: &str| Symbol::Label(x.to_string())),
@@ -299,7 +299,7 @@ pub fn nop(input: &str) -> ParserOutput {
 pub fn instruction(input: &str) -> IResult<&str, Line, VerboseError<&str>> {
     // grab the opcode
     let (input, parser) = preceded(
-        multispace0,
+        space0,
         terminated(parser::opcode, alt((space1, peek(tag("\n"))))),
     )(input)?;
     parser.parse(input)
