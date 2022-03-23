@@ -138,6 +138,7 @@ pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
         branch_pc: input.pc.wrapping_add((input.imm << 2) as i16 as u32), // casts are for sign extension
         syscall,
         instruction: input.instruction,
+        pc: input.pc,
     }
 }
 

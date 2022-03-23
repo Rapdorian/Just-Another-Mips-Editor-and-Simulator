@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use eframe::egui::{menu, CtxRef, Response, Ui, Widget};
 
-use crate::{assembler, syscall::Syscall, Machine, Memory};
+use crate::{assembler, parser::model::LabelTable, syscall::Syscall, Machine, Memory};
 
 use super::console::Console;
 
@@ -43,15 +43,15 @@ impl<'a> RunMenu<'a> {
             *self.running = true;
             self.console.clear();
 
-            let mem = match assembler(self.script) {
+            let (mem, sym) = match assembler(self.script) {
                 Ok(asm) => asm,
                 Err(e) => {
                     self.console.error(&format!("{e}"));
-                    Memory::default()
+                    (Memory::default(), LabelTable::default())
                 }
             };
 
-            self.machine.flash(mem);
+            self.machine.flash(mem, sym);
         }
         response
     }
@@ -60,7 +60,7 @@ impl<'a> RunMenu<'a> {
     fn step_into(&mut self, ui: &mut Ui, should_cycle: &mut bool) -> Response {
         let response = ui.button("⬇");
         if response.clicked() {
-            self.console.error("\nWARNING: Make sure you have assembled your code since stepping does not update your code\n");
+            //self.console.error("\nWARNING: Make sure you have assembled your code since stepping does not update your code\n");
             *should_cycle = true;
         }
         response
@@ -91,15 +91,15 @@ impl<'a> RunMenu<'a> {
             self.machine.reset();
             self.console.clear();
 
-            let mem = match assembler(self.script) {
+            let (mem, sym) = match assembler(self.script) {
                 Ok(asm) => asm,
                 Err(e) => {
                     self.console.error(&format!("{e}"));
-                    Memory::default()
+                    (Memory::default(), LabelTable::default())
                 }
             };
 
-            self.machine.flash(mem);
+            self.machine.flash(mem, sym);
         }
         response
     }
@@ -118,7 +118,7 @@ impl<'a> Widget for RunMenu<'a> {
             .union(self.step_out(ui))
             .union(self.build(ui));
 
-        if should_cycle {
+        if should_cycle && !self.machine.pending_syscall() {
             // record anything that needs to be printed to the console from a syscall
             let mut print = String::new();
 

@@ -1,11 +1,14 @@
-use std::path::{Path, PathBuf};
+use std::{
+    fs::{read_to_string, File},
+    path::{Path, PathBuf},
+};
 
 use eframe::{
     egui::{self, menu, TextEdit},
     epi,
 };
 use futures::executor::block_on;
-use rfd::AsyncFileDialog;
+use rfd::{AsyncFileDialog, FileDialog};
 
 use crate::{
     parser::{self, compute_labels, model::Line},
@@ -37,11 +40,11 @@ pub struct App {
     running: bool,
 }
 
-async fn open_script() -> Option<String> {
-    let file = AsyncFileDialog::new().pick_file().await;
-    if let Some(file) = file {
-        let bytes = file.read().await;
-        Some(String::from_utf8_lossy(&bytes).to_string())
+fn open_script() -> Option<String> {
+    let file = FileDialog::new().set_directory(".").pick_file();
+    if let Some(path) = file {
+        let file = read_to_string(path).unwrap();
+        Some(file)
     } else {
         None
     }
@@ -77,7 +80,7 @@ impl epi::App for App {
 
                     #[cfg(not(target_arch = "wasm32"))]
                     if ui.button("Open").clicked() {
-                        if let Some(file) = block_on(open_script()) {
+                        if let Some(file) = open_script() {
                             *script = file;
                         }
                         ui.close_menu();
@@ -142,49 +145,11 @@ impl epi::App for App {
             });
         }
 
-        egui::CentralPanel::default().show(ctx, |ui| ui.add(Editor::new(script)));
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.add(Editor::new(script, &machine.current_line()))
+        });
     }
     fn name(&self) -> &str {
         "Just Another Mips Editor and Simulator"
-    }
-
-    fn setup(
-        &mut self,
-        _ctx: &egui::CtxRef,
-        _frame: &epi::Frame,
-        _storage: Option<&dyn epi::Storage>,
-    ) {
-    }
-
-    fn warm_up_enabled(&self) -> bool {
-        false
-    }
-
-    fn save(&mut self, _storage: &mut dyn epi::Storage) {}
-
-    fn on_exit(&mut self) {}
-
-    fn auto_save_interval(&self) -> std::time::Duration {
-        std::time::Duration::from_secs(30)
-    }
-
-    fn max_size_points(&self) -> egui::Vec2 {
-        // Some browsers get slow with huge WebGL canvases, so we limit the size:
-        egui::Vec2::new(1024.0, 2048.0)
-    }
-
-    fn clear_color(&self) -> egui::Rgba {
-        // NOTE: a bright gray makes the shadows of the windows look weird.
-        // We use a bit of transparency so that if the user switches on the
-        // `transparent()` option they get immediate results.
-        egui::Color32::from_rgba_unmultiplied(12, 12, 12, 180).into()
-    }
-
-    fn persist_native_window(&self) -> bool {
-        true
-    }
-
-    fn persist_egui_memory(&self) -> bool {
-        true
     }
 }

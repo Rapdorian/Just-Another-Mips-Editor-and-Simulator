@@ -22,6 +22,7 @@ pub struct ExMem {
 
     // demo thing
     pub instruction: u32,
+    pub pc: u32,
 }
 
 /// Memory access pipeline stage
@@ -53,5 +54,6 @@ pub fn memory(pc: &mut u32, memory: &mut Memory, input: ExMem) -> MemWb {
         reg_write: input.reg_write,
         syscall: input.syscall,
         instruction: input.instruction,
+        pc: input.pc,
     }
 }

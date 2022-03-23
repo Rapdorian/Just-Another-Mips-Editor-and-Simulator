@@ -5,7 +5,7 @@ syscall
 li $v0, 5
 syscall
 
-add $t0 $v0, $v0
+add $t0, $v0, $v0
 
 # ?HI
 la $a0, disp

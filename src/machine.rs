@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use crate::{
     parser::{
         self, compute_labels,
-        model::{Line, Segment, Segments, STACK_BASE, TEXT_BASE},
+        model::{LabelTable, Line, Segment, Segments, STACK_BASE, TEXT_BASE},
     },
     pipeline::{self, PipelineState},
     syscall::{resolve_syscall, Syscall},
@@ -16,8 +16,9 @@ use anyhow::Result;
 pub struct Machine {
     pc: u32,
     regs: RegisterFile,
-    state: PipelineState,
+    pub state: PipelineState,
     mem: Memory,
+    syms: LabelTable,
     pending_syscall: Option<Syscall>,
 }
 
@@ -51,13 +52,26 @@ impl Machine {
     /// Fully resets this machine including memory contents and registers
     pub fn hard_reset(&mut self) {
         self.mem = Memory::default();
+        self.syms = LabelTable::default();
         self.regs = RegisterFile::default();
         self.reset();
     }
 
     /// Set the contents of this machines memory to `mem`
-    pub fn flash(&mut self, mem: Memory) {
+    pub fn flash(&mut self, mem: Memory, syms: LabelTable) {
         self.mem = mem;
+        self.syms = syms;
+    }
+
+    /// Gets the current source code line
+    pub fn current_line(&mut self) -> [Option<usize>; 5] {
+        [
+            self.syms.get_line(self.state.if_id.pc - 4),
+            self.syms.get_line(self.state.id_ex.pc - 4),
+            self.syms.get_line(self.state.ex_mem.pc - 4),
+            self.syms.get_line(self.state.mem_wb.pc - 4),
+            self.syms.get_line(self.state.pipe_out.pc - 4),
+        ]
     }
 
     /// Get the current contents of the stack
@@ -95,6 +109,14 @@ impl Machine {
         }
     }
 
+    /// Checks if there is a pending syscall
+    ///
+    /// # Returns
+    /// True if there is a pending syscall
+    pub fn pending_syscall(&self) -> bool {
+        self.pending_syscall.is_some()
+    }
+
     /// Step the machine forward 1 cpu cycle
     pub fn cycle(&mut self) {
         // do not cycle if we are waiting on a syscall
@@ -114,7 +136,7 @@ impl Machine {
 }
 
 /// Method that create a memory instance from a script file
-pub fn assembler(script: &str) -> Result<Memory> {
+pub fn assembler(script: &str) -> Result<(Memory, LabelTable)> {
     // parse assembly
     let lines = parser::parse_string(script)?;
     let labels = compute_labels(&lines);
@@ -129,15 +151,14 @@ pub fn assembler(script: &str) -> Result<Memory> {
             Line::Instruction(ins) => {
                 for word in ins {
                     let bin = word.asm(&labels, *pc);
-                    println!("{pc:X} {bin:X}\t{word:?}");
+                    //println!("{pc:X} {bin:X}\t{word:?}");
                     *memory.get_mut(*pc) = bin;
                     *pc += 4;
                 }
             }
             Line::Segment(seg) => pc = segments.switch(*seg),
-            Line::Label(_) => {}
-            Line::Comment(_) => {}
+            _ => {}
         }
     }
-    Ok(memory)
+    Ok((memory, labels))
 }
