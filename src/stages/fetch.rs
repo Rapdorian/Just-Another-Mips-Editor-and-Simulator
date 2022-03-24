@@ -10,6 +10,6 @@ pub fn fetch(pc: &mut u32, mem: &mut Memory) -> IfId {
     *pc += 4;
     IfId {
         instruction,
-        pc: *pc,
+        pc: *pc - 4,
     }
 }

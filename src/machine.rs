@@ -66,11 +66,11 @@ impl Machine {
     /// Gets the current source code line
     pub fn current_line(&mut self) -> [Option<usize>; 5] {
         [
-            self.syms.get_line(self.state.if_id.pc - 4),
-            self.syms.get_line(self.state.id_ex.pc - 4),
-            self.syms.get_line(self.state.ex_mem.pc - 4),
-            self.syms.get_line(self.state.mem_wb.pc - 4),
-            self.syms.get_line(self.state.pipe_out.pc - 4),
+            self.syms.get_line(self.state.if_id.pc),
+            self.syms.get_line(self.state.id_ex.pc),
+            self.syms.get_line(self.state.ex_mem.pc),
+            self.syms.get_line(self.state.mem_wb.pc),
+            self.syms.get_line(self.state.pipe_out.pc),
         ]
     }
 
