@@ -3,7 +3,6 @@ use std::collections::HashMap;
 mod instruction;
 mod opcode;
 
-pub use super::ParseError;
 pub use instruction::*;
 pub use opcode::Opcode;
 

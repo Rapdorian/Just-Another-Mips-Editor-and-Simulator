@@ -1,21 +1,13 @@
-use std::{
-    fs::{read_to_string, File},
-    path::{Path, PathBuf},
-};
+use std::fs::read_to_string;
 
 use eframe::{
-    egui::{self, menu, TextEdit},
+    egui::{self, menu},
     epi,
 };
-use futures::executor::block_on;
-use rfd::{AsyncFileDialog, FileDialog};
 
-use crate::{
-    parser::{self, compute_labels, model::Line},
-    pipeline::{self, PipelineState},
-    syscall::{resolve_syscall, Syscall},
-    Machine, Memory, RegisterFile,
-};
+use rfd::FileDialog;
+
+use crate::Machine;
 
 use self::{
     console::Console,
@@ -51,7 +43,7 @@ fn open_script() -> Option<String> {
 }
 
 impl epi::App for App {
-    fn update(&mut self, ctx: &egui::CtxRef, frame: &epi::Frame) {
+    fn update(&mut self, ctx: &egui::CtxRef, _frame: &epi::Frame) {
         let Self {
             machine,
             script,

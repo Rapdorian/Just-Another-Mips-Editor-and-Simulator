@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use eframe::egui::{menu, CtxRef, Response, Ui, Widget};
+use eframe::egui::{CtxRef, Response, Ui, Widget};
 
 use crate::{assembler, parser::model::LabelTable, syscall::Syscall, Machine, Memory};
 

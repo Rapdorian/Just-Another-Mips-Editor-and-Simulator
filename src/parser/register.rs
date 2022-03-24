@@ -2,10 +2,8 @@ use std::convert::TryFrom;
 
 use nom::{
     bytes::complete::{tag, take_till},
-    character::complete::multispace0,
-    combinator::{map_res, opt},
+    combinator::map_res,
     error::{context, VerboseError},
-    sequence::preceded,
     IResult,
 };
 

@@ -1,19 +1,18 @@
 //! TODO: Needs to be able to handle pseudo-instructions and comments
 
-use std::{collections::HashMap, ops::Deref};
+use std::ops::Deref;
 
 use anyhow::{anyhow, Result};
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take_till, take_while},
-    character::complete::{multispace0, space0, space1},
+    bytes::complete::{tag, take_while},
+    character::complete::space0,
     combinator::{eof, map, opt},
     error::{context, VerboseError, VerboseErrorKind},
     multi::many_till,
     sequence::{delimited, preceded, terminated},
     Finish, IResult,
 };
-use thiserror::Error;
 
 mod directives;
 mod instruction;
@@ -32,12 +31,6 @@ pub use register::register;
 use model::{LabelTable, Line};
 
 use self::model::{Segment, Segments};
-
-#[derive(Error, Debug)]
-pub enum ParseError {
-    #[error("Unknown instruction: '{0}'")]
-    UnknownInstruction(String),
-}
 
 /// Converts an error trace into a usable error message
 fn convert_error<I>(input: I, error: VerboseError<I>) -> String

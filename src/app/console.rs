@@ -5,11 +5,6 @@ use eframe::egui::{
     TextStyle, Ui, Widget,
 };
 
-enum LineType {
-    Normal,
-    Error,
-}
-
 #[derive(Default)]
 pub struct Console {
     text: String,
@@ -63,12 +58,6 @@ pub struct ConsoleView<'a> {
     text: &'a mut String,
     // start of input cursor
     cursor: usize,
-}
-
-impl<'a> ConsoleView<'a> {
-    fn new(text: &'a mut String, cursor: usize) -> Self {
-        Self { text, cursor }
-    }
 }
 
 impl<'a> AsRef<str> for ConsoleView<'a> {

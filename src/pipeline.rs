@@ -9,7 +9,7 @@ use crate::{Memory, Register, RegisterFile, ZERO};
 ///
 /// Eventually this should pipeline data instead of doing an entire instruction each cycle but that
 /// can't be done until we fix all the data and control hazard issues.
-pub fn single_cycle(pc: &mut u32, regs: &mut RegisterFile, mem: &mut Memory) -> Option<Syscall> {
+pub fn _single_cycle(pc: &mut u32, regs: &mut RegisterFile, mem: &mut Memory) -> Option<Syscall> {
     // should never forward
     let fwd_unit = ForwardingUnit {
         ex_mem: (false, ZERO, 0),
@@ -80,8 +80,7 @@ pub fn pipe_cycle(
 
     // pretend we jumped to the syscall vector
     if pipe_out.syscall {
-        let mut syscall = None;
-        syscall =
+        let syscall =
             Some(handle_syscall(regs, mem).unwrap_or_else(|e| Syscall::Error(format!("{}", e))));
         // stall in case of syscall
         // TODO: Maybe not the best solution but ¯\_(ツ)_/¯
