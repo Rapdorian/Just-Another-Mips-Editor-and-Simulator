@@ -74,9 +74,10 @@ pub fn comment(input: &str) -> IResult<&str, Line, VerboseError<&str>> {
     context(
         "Parsing comment",
         map(
-            preceded(
+            delimited(
                 preceded(space0, context("Comments begin with a #", tag("#"))),
                 context("Comment body", take_while(|c| c != '\n')),
+                tag("\n"),
             ),
             |x: &str| Line::Comment(x.to_string()),
         ),
@@ -100,8 +101,8 @@ pub fn parse_line(input: &str) -> IResult<&str, Line, VerboseError<&str>> {
 pub fn parse_string(input: &str) -> Result<Vec<Line>> {
     let (_, (output, _)) = many_till(
         alt((
-            blank,
             comment,
+            blank,
             terminated(label, preceded(space0, opt(tag("\n")))),
             parse_line,
         )),
