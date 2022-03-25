@@ -26,6 +26,7 @@ pub use instruction::instruction;
 pub use label::label;
 pub use numbers::*;
 pub use opcode::opcode;
+pub use opcode::opcode_name;
 pub use register::register;
 
 use model::{LabelTable, Line};
@@ -103,8 +104,6 @@ pub fn parse_string(input: &str) -> Result<Vec<Line>> {
     )(input)
     .finish()
     .map_err(|e| anyhow!("{}", convert_error(input, e)))?;
-
-    println!("{:#?}", output);
     Ok(output)
 }
 

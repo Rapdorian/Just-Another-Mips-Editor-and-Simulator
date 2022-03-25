@@ -16,7 +16,7 @@ use anyhow::Result;
 pub struct Machine {
     pc: u32,
     regs: RegisterFile,
-    pub state: PipelineState,
+    state: PipelineState,
     mem: Memory,
     syms: LabelTable,
     pending_syscall: Option<Syscall>,
@@ -72,6 +72,11 @@ impl Machine {
             self.syms.get_line(self.state.mem_wb.pc),
             self.syms.get_line(self.state.pipe_out.pc),
         ]
+    }
+
+    /// Gets the current pipeline stages
+    pub fn pipeline(&self) -> &PipelineState {
+        &self.state
     }
 
     /// Get the current contents of the stack

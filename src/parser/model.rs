@@ -75,20 +75,20 @@ impl LabelTable {
     }
 
     pub fn get_label(&self, key: &str) -> Option<u32> {
-        dbg!(self.labels.get(key).map(|x| *x))
+        self.labels.get(key).map(|x| *x)
     }
 
     /// Gets the source code line for a given PC
     pub fn get_line(&self, pc: u32) -> Option<usize> {
-        if dbg!(dbg!(pc) < dbg!(TEXT_BASE)) {
+        if pc < TEXT_BASE {
             return None;
         }
 
         // since self.lines is sorted by PC we can use a binary sort a return the closest value
-        let idx = match dbg!(self.lines.binary_search_by_key(&pc, |x| x.1)) {
+        let idx = match self.lines.binary_search_by_key(&pc, |x| x.1) {
             Ok(idx) => idx,
-            Err(idx) => idx,
+            Err(idx) => idx - 1, // insert position show the next line we want the current line
         };
-        dbg!(self.lines.get(idx)).map(|x| x.0)
+        self.lines.get(idx).map(|x| x.0)
     }
 }

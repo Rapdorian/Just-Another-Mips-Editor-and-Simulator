@@ -34,20 +34,23 @@ impl<'a> Widget for Editor<'a> {
                 .fold(String::new(), |acc, (i, _)| format!("{acc}{}\n", i + 1));
 
             let origin = resp.rect.min;
-            println!(
-                "{:?}",
-                ui.painter().text(
-                    origin,
-                    Align2::LEFT_TOP,
-                    &line_numbers,
-                    TextStyle::Monospace,
-                    ui.style().visuals.widgets.noninteractive.fg_stroke.color,
-                )
+            ui.painter().text(
+                origin,
+                Align2::LEFT_TOP,
+                &line_numbers,
+                TextStyle::Monospace,
+                ui.style().visuals.widgets.noninteractive.fg_stroke.color,
             );
             resp
         })
     }
 }
+
+pub const FETCH_COLOR: Color32 = Color32::from_rgb(102, 57, 49);
+pub const DECODE_COLOR: Color32 = Color32::from_rgb(82, 75, 36);
+pub const EXECUTE_COLOR: Color32 = Color32::from_rgb(50, 60, 57);
+pub const MEMORY_COLOR: Color32 = Color32::from_rgb(63, 63, 115);
+pub const WRITEBACK_COLOR: Color32 = Color32::from_rgb(69, 40, 60);
 
 pub fn layouter<'a>(
     ui: &Ui,
@@ -57,23 +60,17 @@ pub fn layouter<'a>(
 ) -> Arc<Galley> {
     let mut layout = LayoutJob::default();
 
-    let fetch = Color32::from_rgb(102, 57, 49);
-    let decode = Color32::from_rgb(82, 75, 36);
-    let execute = Color32::from_rgb(50, 60, 57);
-    let memory = Color32::from_rgb(63, 63, 115);
-    let writeback = Color32::from_rgb(69, 40, 60);
-
     for (i, line) in string.lines().enumerate() {
         let bg = if pc[4].map(|x| x == i).unwrap_or(false) {
-            writeback
+            WRITEBACK_COLOR
         } else if pc[3].map(|x| x == i).unwrap_or(false) {
-            memory
+            MEMORY_COLOR
         } else if pc[2].map(|x| x == i).unwrap_or(false) {
-            execute
+            EXECUTE_COLOR
         } else if pc[1].map(|x| x == i).unwrap_or(false) {
-            decode
+            DECODE_COLOR
         } else if pc[0].map(|x| x == i).unwrap_or(false) {
-            fetch
+            FETCH_COLOR
         } else {
             ui.style().visuals.extreme_bg_color
         };

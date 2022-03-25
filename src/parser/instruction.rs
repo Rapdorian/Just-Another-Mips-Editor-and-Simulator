@@ -191,6 +191,46 @@ pub fn branch_type(input: &str, op: Opcode) -> ParserOutput {
     ))
 }
 
+/// Parses branch pseudo instructions
+pub fn multi_branch(input: &str, less_than: bool, equal: bool) -> ParserOutput {
+    let (input, rt) = context("Expected first register", parser::register)(input)?;
+    let (input, rs) = context(
+        "Expected second register",
+        preceded(separator, parser::register),
+    )(input)?;
+
+    let (input, mut imm) = context("Expected label", preceded(separator, immediate))(input)?;
+
+    // if we got a label make it pc relative
+    if let Imm::Label(label) = imm {
+        imm = Imm::PcRelative(label);
+    }
+    Ok((
+        input,
+        Line::Instruction(vec![
+            Instruction::R {
+                op: Opcode::Funct(0x2a), //slt
+                rd: AT,
+                rs: if less_than != equal { rt } else { rs }, // != is used as an XOR
+                rt: if less_than != equal { rs } else { rt },
+                shamt: 0,
+            },
+            Instruction::I {
+                op: if equal {
+                    Opcode::Op(0x04) // beq
+                } else {
+                    Opcode::Op(0x05) // bne
+                },
+                rs: AT,
+                rt: ZERO,
+                imm,
+            },
+            Instruction::Literal { data: 0 },
+            Instruction::Literal { data: 0 },
+        ]),
+    ))
+}
+
 /// Parses a move pseudoinstruction
 pub fn move_ins(input: &str) -> ParserOutput {
     let (input, rd) = context("Expected destination register", parser::register)(input)?;

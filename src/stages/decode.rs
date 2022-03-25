@@ -50,6 +50,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
     let mem_read; // if enabled read from alu result
     let alu_op; // alu operation
     let branch; // enable branching
+    let branch_not; // enable branch not equal
     let jump; // enable jumping
     let mut syscall = false;
 
@@ -65,6 +66,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             mem_write = false;
             branch = false;
+            branch_not = false;
             jump = false;
             alu_op = OP_R;
         }
@@ -77,6 +79,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = true;
             mem_write = false;
             branch = false;
+            branch_not = false;
             jump = false;
             alu_op = OP_ADD;
         }
@@ -89,6 +92,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             mem_write = true;
             branch = false;
+            branch_not = false;
             jump = false;
             alu_op = OP_ADD;
         }
@@ -101,6 +105,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             mem_write = false;
             branch = false;
+            branch_not = false;
             jump = false;
             alu_op = OP_ADD;
         }
@@ -114,6 +119,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             mem_write = false;
             branch = false;
+            branch_not = false;
             jump = false;
             alu_op = OP_AND;
         }
@@ -128,6 +134,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             alu_op = OP_UPPER;
             branch = false;
+            branch_not = false;
             jump = false;
         }
 
@@ -140,6 +147,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             mem_write = false;
             branch = false;
+            branch_not = false;
             jump = false;
             alu_op = OP_OR;
         }
@@ -152,6 +160,20 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             mem_write = false;
             branch = true;
+            branch_not = false;
+            jump = false;
+            alu_op = OP_SUB;
+        }
+        0x5 => {
+            // BNE instruction
+            reg_dst = false;
+            alu_src = false;
+            mem_to_reg = false;
+            reg_write = false;
+            mem_read = false;
+            mem_write = false;
+            branch = true;
+            branch_not = true;
             jump = false;
             alu_op = OP_SUB;
         }
@@ -164,6 +186,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             mem_read = false;
             mem_write = false;
             branch = false;
+            branch_not = false;
             jump = true;
             alu_op = OP_ADD;
             imm = j_imm;
@@ -190,6 +213,7 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
         mem_to_reg,
         reg_write,
         branch,
+        branch_not,
         jump,
         pc: input.pc,
         syscall,

@@ -1,7 +1,7 @@
 use super::directives::{ascii_lit, asciiz_lit, segment, word_lit};
 use super::instruction::{
-    branch_type, i_type, j_type, jr_type, li_ins, load_type, lui, move_ins, nop, r_type,
-    shift_type, syscall,
+    branch_type, i_type, j_type, jr_type, li_ins, load_type, lui, move_ins, multi_branch, nop,
+    r_type, shift_type, syscall,
 };
 use super::model::{Line, Opcode, Segment};
 
@@ -49,6 +49,62 @@ impl InstructionParser {
     }
 }
 
+pub fn opcode_name(input: u32) -> Option<&'static str> {
+    // early return if the instruction is a nop
+    if input == 0 {
+        return Some("nop");
+    }
+
+    // copied from src/stages/decode.rs
+    let op_mask = 0b11111100000000000000000000000000;
+    let fn_mask = 0b00000000000000000000000000111111;
+
+    let funct = input & fn_mask;
+    let op = (input & op_mask) >> 26;
+
+    let opcode = if op == 0 {
+        Opcode::Funct(funct as u8)
+    } else {
+        Opcode::Op(op as u8)
+    };
+
+    match opcode {
+        Opcode::Funct(funct) => match funct {
+            0x00 => Some("sll"),
+            0x02 => Some("srl"),
+            0x03 => Some("sra"),
+            0x06 => Some("srlv"),
+            0x08 => Some("jr"),
+            0x0c => Some("syscall"),
+            0x1a => Some("div"),
+            0x1b => Some("divu"),
+            0x20 => Some("add"),
+            0x21 => Some("addu"),
+            0x22 => Some("sub"),
+            0x24 => Some("and"),
+            0x25 => Some("or"),
+            0x26 => Some("xor"),
+            0x27 => Some("nor"),
+            0x2a => Some("slt"),
+            _ => None,
+        },
+        Opcode::Op(op) => match op {
+            0x02 => Some("j"),
+            0x03 => Some("jal"),
+            0x04 => Some("beq"),
+            0x05 => Some("bne"),
+            0x08 => Some("addi"),
+            0x09 => Some("addiu"),
+            0x0c => Some("andi"),
+            0x0d => Some("ori"),
+            0x0f => Some("lui"),
+            0x23 => Some("lw"),
+            0x2b => Some("sw"),
+            _ => None,
+        },
+    }
+}
+
 pub fn opcode(input: &str) -> IResult<&str, InstructionParser, VerboseError<&str>> {
     context(
         "Unknown Opcode",
@@ -64,8 +120,10 @@ pub fn opcode(input: &str) -> IResult<&str, InstructionParser, VerboseError<&str
                 "andi" => Ok(InstructionParser::new(Opcode::Op(0x0c), i_type)),
                 "beq" => Ok(InstructionParser::new(Opcode::Op(0x04), branch_type)),
                 "bne" => Ok(InstructionParser::new(Opcode::Op(0x05), branch_type)),
-                "blez" => Ok(InstructionParser::new(Opcode::Op(0x06), branch_type)),
-                "bgtz" => Ok(InstructionParser::new(Opcode::Op(0x07), branch_type)),
+                "blt" => Ok(InstructionParser::pseudo(|i| multi_branch(i, true, false))),
+                "bgt" => Ok(InstructionParser::pseudo(|i| multi_branch(i, false, false))),
+                "ble" => Ok(InstructionParser::pseudo(|i| multi_branch(i, true, true))),
+                "bge" => Ok(InstructionParser::pseudo(|i| multi_branch(i, false, true))),
                 "div" => Ok(InstructionParser::new(Opcode::Funct(0x1a), NO_PARSER)),
                 "divu" => Ok(InstructionParser::new(Opcode::Funct(0x1b), NO_PARSER)),
                 "j" => Ok(InstructionParser::new(Opcode::Op(0x02), j_type)),

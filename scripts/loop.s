@@ -10,10 +10,6 @@ loop:
 	
 	addi $t0, $t0, 1
 	
-	beq $t0, $t1, done
-    nop
-j loop
-nop
-done:
+	bne $t0, $t1, loop
 li $v0, 10
 syscall
