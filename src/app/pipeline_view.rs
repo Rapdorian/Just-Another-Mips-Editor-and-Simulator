@@ -43,6 +43,23 @@ impl<'a> Widget for PipelineView<'a> {
                 ui.vertical(|ui| {
                     ui.label("Execute");
                     ui.label(opcode_name(pipeline.ex_mem.instruction).unwrap_or(""));
+
+                    let result = pipeline.ex_mem.alu_result;
+
+                    if pipeline.ex_mem.write || pipeline.ex_mem.read {
+                        let reg = pipeline.ex_mem.write_register.name();
+                        // display memory access
+                        ui.label(format!("addr: {result} reg: {reg}"));
+                    } else if pipeline.ex_mem.branch {
+                        let should_branch = if pipeline.ex_mem.branch_not {
+                            result != 0
+                        } else {
+                            result == 0
+                        };
+                        ui.label(format!("Branch: {should_branch}"));
+                    } else {
+                        ui.label(format!("ALU result: {result}"));
+                    }
                 });
             });
 
@@ -50,12 +67,22 @@ impl<'a> Widget for PipelineView<'a> {
                 ui.vertical(|ui| {
                     ui.label("Memory");
                     ui.label(opcode_name(pipeline.mem_wb.instruction).unwrap_or(""));
+
+                    if pipeline.mem_wb.reg_write {
+                        let reg = pipeline.mem_wb.write_register.name();
+                        let data = if pipeline.mem_wb.mem_to_reg {
+                            pipeline.mem_wb.mem_data
+                        } else {
+                            pipeline.mem_wb.alu_data
+                        };
+                        ui.label(format!("wrote {data} to {reg}"));
+                    }
                 });
             });
 
             Frame::default().fill(WRITEBACK_COLOR).show(ui, |ui| {
                 ui.vertical(|ui| {
-                    ui.label("Memory");
+                    ui.label("Writeback");
                     ui.label(opcode_name(pipeline.pipe_out.instruction).unwrap_or(""));
                 });
             });
