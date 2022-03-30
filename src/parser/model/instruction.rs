@@ -1,5 +1,3 @@
-use std::ops::{BitAnd, Shl};
-
 use super::{LabelTable, Opcode};
 use crate::Register;
 

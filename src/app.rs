@@ -1,31 +1,25 @@
-use std::{
-    fs::{read_to_string, File},
-    path::{Path, PathBuf},
-};
+use std::fs::read_to_string;
 
 use eframe::{
-    egui::{self, menu, TextEdit},
+    egui::{self, menu, ScrollArea},
     epi,
 };
-use futures::executor::block_on;
-use rfd::{AsyncFileDialog, FileDialog};
 
-use crate::{
-    parser::{self, compute_labels, model::Line},
-    pipeline::{self, PipelineState},
-    syscall::{resolve_syscall, Syscall},
-    Machine, Memory, RegisterFile,
-};
+use rfd::FileDialog;
+
+use crate::{Machine, Register};
 
 use self::{
     console::Console,
     editor::Editor,
+    pipeline_view::PipelineView,
     run_menu::RunMenu,
     watches::{Watch, WatchList},
 };
 
 mod console;
 mod editor;
+mod pipeline_view;
 mod run_menu;
 mod watches;
 
@@ -36,6 +30,8 @@ pub struct App {
     console: Console,
     show_watches: bool,
     show_stack: bool,
+    show_pipeline: bool,
+    show_regs: bool,
     watches: Vec<Watch>,
     running: bool,
 }
@@ -51,13 +47,15 @@ fn open_script() -> Option<String> {
 }
 
 impl epi::App for App {
-    fn update(&mut self, ctx: &egui::CtxRef, frame: &epi::Frame) {
+    fn update(&mut self, ctx: &egui::CtxRef, _frame: &epi::Frame) {
         let Self {
             machine,
             script,
             console,
             show_watches,
             show_stack,
+            show_pipeline,
+            show_regs,
             watches,
             running,
         } = self;
@@ -99,6 +97,14 @@ impl epi::App for App {
                     }
                     if ui.button("Toggle Stack View").clicked() {
                         *show_stack = !*show_stack;
+                        ui.close_menu();
+                    }
+                    if ui.button("Toggle Pipeline View").clicked() {
+                        *show_pipeline = !*show_pipeline;
+                        ui.close_menu();
+                    }
+                    if ui.button("Toggle Register View").clicked() {
+                        *show_regs = !*show_regs;
                         ui.close_menu();
                     }
                 });
@@ -145,7 +151,28 @@ impl epi::App for App {
             });
         }
 
+        if *show_regs {
+            // Display the registers in a sidebar
+            egui::SidePanel::right("registers").show(ctx, |ui| {
+                ui.heading("Registers");
+                ScrollArea::vertical().show(ui, |ui| {
+                    for r in 0..32 {
+                        let r = Register::from(r);
+                        ui.horizontal(|ui| {
+                            let name = r.name();
+                            let val = machine.register(r);
+                            ui.label(format!("{name}: "));
+                            ui.label(format!("{val}"));
+                        });
+                    }
+                });
+            });
+        }
+
         egui::CentralPanel::default().show(ctx, |ui| {
+            if *show_pipeline {
+                ui.add(PipelineView::new(machine));
+            }
             ui.add(Editor::new(script, &machine.current_line()))
         });
     }

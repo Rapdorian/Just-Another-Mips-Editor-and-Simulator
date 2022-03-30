@@ -8,6 +8,7 @@ pub struct ExMem {
     pub alu_result: u32,
     pub zero: bool,
     pub branch: bool,
+    pub branch_not: bool,
     pub jump: bool,
     pub write_data: u32,
     pub write: bool,
@@ -37,9 +38,11 @@ pub fn memory(pc: &mut u32, memory: &mut Memory, input: ExMem) -> MemWb {
         read_data = memory.get(input.alu_result);
     }
 
-    if input.branch && input.zero {
-        // branch to PC copmuted in execute stage
-        *pc = input.branch_pc;
+    if input.branch {
+        if (!input.branch_not && input.zero) || (input.branch_not && !input.zero) {
+            // branch to PC copmuted in execute stage
+            *pc = input.branch_pc;
+        }
     }
 
     if input.jump {

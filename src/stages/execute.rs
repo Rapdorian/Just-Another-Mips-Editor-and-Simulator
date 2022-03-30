@@ -19,6 +19,7 @@ pub struct IdEx {
     pub syscall: bool,
     // forwarded data
     pub branch: bool,
+    pub branch_not: bool,
     pub jump: bool,
     pub pc: u32,
     pub mem_write: bool,
@@ -133,6 +134,7 @@ pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
         write_register: if input.reg_dst { input.rd } else { input.rt },
         reg_write: input.reg_write,
         branch: input.branch,
+        branch_not: input.branch_not,
         jump: input.jump,
         jump_pc: input.imm << 2,
         branch_pc: input.pc.wrapping_add((input.imm << 2) as i16 as u32), // casts are for sign extension

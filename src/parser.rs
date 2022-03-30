@@ -1,19 +1,18 @@
 //! TODO: Needs to be able to handle pseudo-instructions and comments
 
-use std::{collections::HashMap, ops::Deref};
+use std::ops::Deref;
 
 use anyhow::{anyhow, Result};
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take_till, take_while},
-    character::complete::{multispace0, space0, space1},
+    bytes::complete::{tag, take_while},
+    character::complete::space0,
     combinator::{eof, map, opt},
     error::{context, VerboseError, VerboseErrorKind},
     multi::many_till,
     sequence::{delimited, preceded, terminated},
     Finish, IResult,
 };
-use thiserror::Error;
 
 mod directives;
 mod instruction;
@@ -27,17 +26,12 @@ pub use instruction::instruction;
 pub use label::label;
 pub use numbers::*;
 pub use opcode::opcode;
+pub use opcode::opcode_name;
 pub use register::register;
 
 use model::{LabelTable, Line};
 
 use self::model::{Segment, Segments};
-
-#[derive(Error, Debug)]
-pub enum ParseError {
-    #[error("Unknown instruction: '{0}'")]
-    UnknownInstruction(String),
-}
 
 /// Converts an error trace into a usable error message
 fn convert_error<I>(input: I, error: VerboseError<I>) -> String
@@ -74,9 +68,10 @@ pub fn comment(input: &str) -> IResult<&str, Line, VerboseError<&str>> {
     context(
         "Parsing comment",
         map(
-            preceded(
+            delimited(
                 preceded(space0, context("Comments begin with a #", tag("#"))),
                 context("Comment body", take_while(|c| c != '\n')),
+                tag("\n"),
             ),
             |x: &str| Line::Comment(x.to_string()),
         ),
@@ -100,8 +95,8 @@ pub fn parse_line(input: &str) -> IResult<&str, Line, VerboseError<&str>> {
 pub fn parse_string(input: &str) -> Result<Vec<Line>> {
     let (_, (output, _)) = many_till(
         alt((
-            blank,
             comment,
+            blank,
             terminated(label, preceded(space0, opt(tag("\n")))),
             parse_line,
         )),
@@ -109,8 +104,6 @@ pub fn parse_string(input: &str) -> Result<Vec<Line>> {
     )(input)
     .finish()
     .map_err(|e| anyhow!("{}", convert_error(input, e)))?;
-
-    println!("{:#?}", output);
     Ok(output)
 }
 

@@ -1,7 +1,7 @@
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{alphanumeric1, space0, space1},
+    character::complete::{space0, space1},
     combinator::{map, peek},
     error::{context, VerboseError},
     sequence::{delimited, preceded, terminated, tuple},
@@ -185,6 +185,46 @@ pub fn branch_type(input: &str, op: Opcode) -> ParserOutput {
         input,
         Line::Instruction(vec![
             Instruction::I { op, rt, rs, imm },
+            Instruction::Literal { data: 0 },
+            Instruction::Literal { data: 0 },
+        ]),
+    ))
+}
+
+/// Parses branch pseudo instructions
+pub fn multi_branch(input: &str, less_than: bool, equal: bool) -> ParserOutput {
+    let (input, rt) = context("Expected first register", parser::register)(input)?;
+    let (input, rs) = context(
+        "Expected second register",
+        preceded(separator, parser::register),
+    )(input)?;
+
+    let (input, mut imm) = context("Expected label", preceded(separator, immediate))(input)?;
+
+    // if we got a label make it pc relative
+    if let Imm::Label(label) = imm {
+        imm = Imm::PcRelative(label);
+    }
+    Ok((
+        input,
+        Line::Instruction(vec![
+            Instruction::R {
+                op: Opcode::Funct(0x2a), //slt
+                rd: AT,
+                rs: if less_than != equal { rt } else { rs }, // != is used as an XOR
+                rt: if less_than != equal { rs } else { rt },
+                shamt: 0,
+            },
+            Instruction::I {
+                op: if equal {
+                    Opcode::Op(0x04) // beq
+                } else {
+                    Opcode::Op(0x05) // bne
+                },
+                rs: AT,
+                rt: ZERO,
+                imm,
+            },
             Instruction::Literal { data: 0 },
             Instruction::Literal { data: 0 },
         ]),
