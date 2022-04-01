@@ -1,4 +1,4 @@
-use eframe::egui::{Frame, Label, Response, RichText, Ui, Widget};
+use eframe::egui::{Frame, Response, Ui, Widget};
 
 use crate::{parser::opcode_name, Machine};
 

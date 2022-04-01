@@ -40,11 +40,11 @@ pub fn handle_syscall(reg_file: &mut RegisterFile, mem: &mut Memory) -> Result<S
             println!("SYSCALL 4 {ptr}");
             // to make this unicode aware we need to bundle it into a buffer first
             let mut buffer = vec![];
-            let mut b = mem.get(ptr) as u8; //TODO: Less than word sized reads
+            let mut b = mem.get(ptr)? as u8; //TODO: Less than word sized reads
             while b != 0 {
                 buffer.push(b);
                 ptr += 1;
-                b = mem.get(ptr) as u8;
+                b = mem.get(ptr)? as u8;
             }
             let s = String::from_utf8(buffer)?;
             Ok(Syscall::Print(format!("{}", s)))

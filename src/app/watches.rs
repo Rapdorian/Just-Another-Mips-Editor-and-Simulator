@@ -36,7 +36,7 @@ impl Watch {
     pub fn read(&self, vm: &Machine) -> u32 {
         match self.ty {
             WatchType::Register => vm.register(self.val.into()),
-            WatchType::Memory => vm.read_word(self.val),
+            WatchType::Memory => vm.read_word(self.val).unwrap_or(0),
         }
     }
 

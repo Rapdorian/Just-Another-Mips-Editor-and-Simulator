@@ -1,5 +1,6 @@
 use super::writeback::MemWb;
 use crate::{Memory, Register};
+use anyhow::{Context, Result};
 
 /// Struct representing this stages input
 #[derive(Debug, Default, Clone)]
@@ -27,7 +28,7 @@ pub struct ExMem {
 }
 
 /// Memory access pipeline stage
-pub fn memory(pc: &mut u32, memory: &mut Memory, input: ExMem) -> MemWb {
+pub fn memory(pc: &mut u32, memory: &mut Memory, input: ExMem) -> Result<MemWb> {
     let mut read_data = 0;
 
     // handle memory accesses
@@ -35,7 +36,7 @@ pub fn memory(pc: &mut u32, memory: &mut Memory, input: ExMem) -> MemWb {
         *memory.get_mut(input.alu_result) = input.write_data;
     }
     if input.read {
-        read_data = memory.get(input.alu_result);
+        read_data = memory.get(input.alu_result).context("In memory stage")?;
     }
 
     if input.branch {
@@ -49,7 +50,7 @@ pub fn memory(pc: &mut u32, memory: &mut Memory, input: ExMem) -> MemWb {
         *pc = input.jump_pc;
     }
 
-    MemWb {
+    Ok(MemWb {
         mem_to_reg: input.mem_to_reg,
         mem_data: read_data,
         alu_data: input.alu_result,
@@ -58,5 +59,5 @@ pub fn memory(pc: &mut u32, memory: &mut Memory, input: ExMem) -> MemWb {
         syscall: input.syscall,
         instruction: input.instruction,
         pc: input.pc,
-    }
+    })
 }

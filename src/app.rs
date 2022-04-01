@@ -32,6 +32,8 @@ pub struct App {
     show_stack: bool,
     show_pipeline: bool,
     show_regs: bool,
+    regs_hex: bool,
+    stack_hex: bool,
     watches: Vec<Watch>,
     running: bool,
 }
@@ -56,6 +58,8 @@ impl epi::App for App {
             show_stack,
             show_pipeline,
             show_regs,
+            regs_hex,
+            stack_hex,
             watches,
             running,
         } = self;
@@ -145,8 +149,20 @@ impl epi::App for App {
             // Display the stack in a sidebar
             egui::SidePanel::right("stack").show(ctx, |ui| {
                 ui.heading("Stack");
-                for item in machine.stack().iter().rev() {
-                    ui.label(item.to_string());
+                ui.horizontal(|ui| {
+                    ui.radio_value(stack_hex, false, "Dec");
+                    ui.radio_value(stack_hex, true, "Hex");
+                });
+                for (addr, item) in machine.stack().iter().rev() {
+                    ui.horizontal(|ui| {
+                        ui.label(format!("(0x{addr:X}): "));
+                        let val = if *stack_hex {
+                            format!("0x{item:X}")
+                        } else {
+                            format!("{item}")
+                        };
+                        ui.label(val);
+                    });
                 }
             });
         }
@@ -155,6 +171,10 @@ impl epi::App for App {
             // Display the registers in a sidebar
             egui::SidePanel::right("registers").show(ctx, |ui| {
                 ui.heading("Registers");
+                ui.horizontal(|ui| {
+                    ui.radio_value(regs_hex, false, "Dec");
+                    ui.radio_value(regs_hex, true, "Hex");
+                });
                 ScrollArea::vertical().show(ui, |ui| {
                     for r in 0..32 {
                         let r = Register::from(r);
@@ -162,6 +182,11 @@ impl epi::App for App {
                             let name = r.name();
                             let val = machine.register(r);
                             ui.label(format!("{name}: "));
+                            let val = if *regs_hex {
+                                format!("0x{val:X}")
+                            } else {
+                                format!("{val}")
+                            };
                             ui.label(format!("{val}"));
                         });
                     }

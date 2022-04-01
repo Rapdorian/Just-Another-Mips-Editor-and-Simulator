@@ -1,6 +1,7 @@
 use super::memory::ExMem;
 use crate::pipeline::ForwardingUnit;
 use crate::Register;
+use anyhow::{bail, Result};
 
 /// Struct representing this stages input
 #[derive(Debug, Default, Clone)]
@@ -43,7 +44,7 @@ pub mod op_ctrl {
 use op_ctrl::*;
 
 /// Runs execute stage
-pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
+pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> Result<ExMem> {
     let syscall = input.syscall;
     let mut use_shamt = false;
     // compute ALU control lines
@@ -76,7 +77,7 @@ pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
                     (false, false, ALU_SRA)
                 }
                 _ => {
-                    panic!("Unkown funct: {}", input.op_funct)
+                    bail!("Unkown funct: {}", input.op_funct)
                 }
             }
         }
@@ -86,7 +87,7 @@ pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
         OP_OR => (false, false, ALU_OR),
         OP_UPPER => (false, false, ALU_UPPER),
         _ => {
-            panic!("Unknown Instruction")
+            bail!("Unknown Instruction")
         }
     };
 
@@ -122,9 +123,9 @@ pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
         arg2 = input.shamt;
     }
 
-    let result = alu(arg1, arg2, alu_ctrl);
+    let result = alu(arg1, arg2, alu_ctrl)?;
 
-    ExMem {
+    Ok(ExMem {
         alu_result: result,
         zero: result == 0,
         write_data: input.reg_2,
@@ -141,7 +142,7 @@ pub fn execute(input: IdEx, fwd_unit: ForwardingUnit) -> ExMem {
         syscall,
         instruction: input.instruction,
         pc: input.pc,
-    }
+    })
 }
 
 pub mod alu_signals {
@@ -160,7 +161,7 @@ use alu_signals::*;
 
 /// Simple ALU implementation.
 /// TODO: Handle carry flag
-pub fn alu(a: u32, b: u32, op: (bool, bool, u8)) -> u32 {
+pub fn alu(a: u32, b: u32, op: (bool, bool, u8)) -> Result<u32> {
     //println!("{} {} {:?}", a, b, op);
 
     let a = if op.0 { !a } else { a };
@@ -170,7 +171,7 @@ pub fn alu(a: u32, b: u32, op: (bool, bool, u8)) -> u32 {
     let arith_a = if op.0 { a.wrapping_add(1) } else { a };
     let arith_b = if op.1 { b.wrapping_add(1) } else { b };
 
-    match op.2 {
+    Ok(match op.2 {
         ALU_AND => a & b,
         ALU_OR => a | b,
         ALU_ADD => arith_a.overflowing_add(arith_b).0,
@@ -181,7 +182,7 @@ pub fn alu(a: u32, b: u32, op: (bool, bool, u8)) -> u32 {
         ALU_SRL => a.overflowing_shr(b).0,
         ALU_SRA => (a as i32).overflowing_shr(b).0 as u32,
 
-        ALU_UPPER => dbg!(dbg!(b) << 16),
+        ALU_UPPER => b << 16,
 
         ALU_SLT => {
             if a < b {
@@ -190,6 +191,6 @@ pub fn alu(a: u32, b: u32, op: (bool, bool, u8)) -> u32 {
                 0
             }
         }
-        _ => todo!("Unknown instruction: {:?}", op),
-    }
+        _ => bail!("Unknown ALU instruction: {:?}", op),
+    })
 }

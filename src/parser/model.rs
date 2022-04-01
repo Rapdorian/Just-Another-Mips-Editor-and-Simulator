@@ -87,7 +87,7 @@ impl LabelTable {
         // since self.lines is sorted by PC we can use a binary sort a return the closest value
         let idx = match self.lines.binary_search_by_key(&pc, |x| x.1) {
             Ok(idx) => idx,
-            Err(idx) => idx - 1, // insert position show the next line we want the current line
+            Err(idx) => idx.saturating_sub(1), // insert position show the next line we want the current line
         };
         self.lines.get(idx).map(|x| x.0)
     }

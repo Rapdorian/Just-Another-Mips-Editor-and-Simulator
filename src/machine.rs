@@ -32,7 +32,7 @@ impl Machine {
         self.regs.get_mut(reg)
     }
 
-    pub fn read_word(&self, addr: u32) -> u32 {
+    pub fn read_word(&self, addr: u32) -> Result<u32> {
         self.mem.get(addr)
     }
 
@@ -47,13 +47,13 @@ impl Machine {
     pub fn reset(&mut self) {
         self.pc = TEXT_BASE;
         self.state = PipelineState::default();
+        self.regs = RegisterFile::default();
     }
 
     /// Fully resets this machine including memory contents and registers
     pub fn hard_reset(&mut self) {
         self.mem = Memory::default();
         self.syms = LabelTable::default();
-        self.regs = RegisterFile::default();
         self.reset();
     }
 
@@ -80,11 +80,12 @@ impl Machine {
     }
 
     /// Get the current contents of the stack
-    pub fn stack(&mut self) -> Vec<u32> {
+    pub fn stack(&mut self) -> Vec<(u32, u32)> {
         let sp = self.regs.read_register(SP) / 4;
         let mut stack = vec![];
         for i in sp..STACK_BASE / 4 {
-            stack.push(self.mem.get(i * 4));
+            let addr = i * 4;
+            stack.push((addr, self.mem.get(addr).unwrap_or(0)));
         }
         stack
     }
@@ -123,7 +124,7 @@ impl Machine {
     }
 
     /// Step the machine forward 1 cpu cycle
-    pub fn cycle(&mut self) {
+    pub fn cycle(&mut self) -> Result<()> {
         // do not cycle if we are waiting on a syscall
         if self.pending_syscall.is_none() {
             let (new_state, syscall) = pipeline::pipe_cycle(
@@ -131,12 +132,13 @@ impl Machine {
                 &mut self.regs,
                 &mut self.mem,
                 self.state.clone(),
-            );
+            )?;
             self.state = new_state;
             if let Some(syscall) = syscall {
                 self.pending_syscall = Some(syscall);
             }
         }
+        Ok(())
     }
 }
 
@@ -165,5 +167,9 @@ pub fn assembler(script: &str) -> Result<(Memory, LabelTable)> {
             _ => {}
         }
     }
+    // insert guard instruction that causes the program to crash if it is encountered
+    pc = segments.switch(Segment::Text);
+    *memory.get_mut(*pc) = 0xBAADF00D;
+
     Ok((memory, labels))
 }

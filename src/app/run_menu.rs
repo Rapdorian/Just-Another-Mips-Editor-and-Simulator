@@ -125,22 +125,26 @@ impl<'a> Widget for RunMenu<'a> {
             // record if we are running so we can stop it from the Quit syscall
             let mut running = *self.running;
 
-            self.machine.cycle();
-            self.machine.handle_syscall(|syscall| match syscall {
-                Syscall::Print(out) => ControlFlow::Break(print.push_str(&out)),
-                Syscall::Error(out) => {
-                    ControlFlow::Break(print.push_str(&format!("\n\x07ERROR: {out}\x1b\n")))
-                }
-                Syscall::Quit => ControlFlow::Break(running = false),
-                _ => ControlFlow::Continue(()),
-            });
-            self.ctx.request_repaint();
+            if let Err(e) = self.machine.cycle() {
+                self.console.error(&format!("{e:#}\n"));
+                *self.running = false;
+            } else {
+                self.machine.handle_syscall(|syscall| match syscall {
+                    Syscall::Print(out) => ControlFlow::Break(print.push_str(&out)),
+                    Syscall::Error(out) => {
+                        ControlFlow::Break(print.push_str(&format!("\n\x07ERROR: {out}\x1b\n")))
+                    }
+                    Syscall::Quit => ControlFlow::Break(running = false),
+                    _ => ControlFlow::Continue(()),
+                });
+                self.ctx.request_repaint();
 
-            // apply the result of syscalls
-            if print.len() > 0 {
-                self.console.print(&print);
+                // apply the result of syscalls
+                if print.len() > 0 {
+                    self.console.print(&print);
+                }
+                *self.running = running;
             }
-            *self.running = running;
         }
 
         response
