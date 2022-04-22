@@ -77,6 +77,12 @@ pub fn handle_syscall(reg_file: &mut RegisterFile, mem: &mut Memory) -> Result<S
             let arg = reg_file.read_register(A0);
             Ok(Syscall::Print(format!("{}", arg)))
         }
+        0xFFFFDEAD => {
+            // failed to exit kernel error
+            Ok(Syscall::Error(format!(
+                "program finished (ran into kernel)"
+            )))
+        }
         _ => {
             bail!("Unrecognized syscall: {}", v0)
         }

@@ -171,7 +171,8 @@ pub fn assembler(script: &str) -> Result<(Memory, LabelTable)> {
     }
     // insert guard instruction that causes the program to crash if it is encountered
     pc = segments.switch(Segment::Text);
-    *memory.get_mut(*pc) = 0xBAADF00D;
+    *memory.get_mut(*pc) = 0x3402DEAD;
+    *memory.get_mut(*pc + 4) = 0xC;
 
     Ok((memory, labels))
 }
