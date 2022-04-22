@@ -53,8 +53,12 @@ pub fn j_type(input: &str, op: Opcode) -> ParserOutput {
         input,
         Line::Instruction(vec![
             Instruction::J { op, addr },
-            Instruction::Literal { data: 0 },
-            Instruction::Literal { data: 0 },
+            Instruction::Literal {
+                data: vec![0, 0, 0, 0],
+            },
+            Instruction::Literal {
+                data: vec![0, 0, 0, 0],
+            },
         ]),
     ))
 }
@@ -74,8 +78,12 @@ pub fn jr_type(input: &str, op: Opcode) -> ParserOutput {
                 rt,
                 shamt: 0,
             },
-            Instruction::Literal { data: 0 },
-            Instruction::Literal { data: 0 },
+            Instruction::Literal {
+                data: vec![0, 0, 0, 0],
+            },
+            Instruction::Literal {
+                data: vec![0, 0, 0, 0],
+            },
         ]),
     ))
 }
@@ -185,8 +193,12 @@ pub fn branch_type(input: &str, op: Opcode) -> ParserOutput {
         input,
         Line::Instruction(vec![
             Instruction::I { op, rt, rs, imm },
-            Instruction::Literal { data: 0 },
-            Instruction::Literal { data: 0 },
+            Instruction::Literal {
+                data: vec![0, 0, 0, 0],
+            },
+            Instruction::Literal {
+                data: vec![0, 0, 0, 0],
+            },
         ]),
     ))
 }
@@ -225,8 +237,12 @@ pub fn multi_branch(input: &str, less_than: bool, equal: bool) -> ParserOutput {
                 rt: ZERO,
                 imm,
             },
-            Instruction::Literal { data: 0 },
-            Instruction::Literal { data: 0 },
+            Instruction::Literal {
+                data: vec![0, 0, 0, 0],
+            },
+            Instruction::Literal {
+                data: vec![0, 0, 0, 0],
+            },
         ]),
     ))
 }
@@ -332,7 +348,9 @@ pub fn syscall(input: &str) -> ParserOutput {
 pub fn nop(input: &str) -> ParserOutput {
     Ok((
         input,
-        Line::Instruction(vec![Instruction::Literal { data: 0 }]),
+        Line::Instruction(vec![Instruction::Literal {
+            data: vec![0, 0, 0, 0],
+        }]),
     ))
 }
 

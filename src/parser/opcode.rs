@@ -1,4 +1,4 @@
-use super::directives::{ascii_lit, asciiz_lit, segment, word_lit};
+use super::directives::{ascii_lit, asciiz_lit, byte_lit, half_lit, segment, space, word_lit};
 use super::instruction::{
     branch_type, i_type, j_type, jr_type, li_ins, load_type, lui, move_ins, multi_branch, nop,
     r_type, shift_type, syscall,
@@ -147,6 +147,9 @@ pub fn opcode(input: &str) -> IResult<&str, InstructionParser, VerboseError<&str
                 "syscall" => Ok(InstructionParser::pseudo(syscall)),
                 "nop" => Ok(InstructionParser::pseudo(nop)),
                 ".word" => Ok(InstructionParser::pseudo(word_lit)),
+                ".half" => Ok(InstructionParser::pseudo(half_lit)),
+                ".byte" => Ok(InstructionParser::pseudo(byte_lit)),
+                ".space" => Ok(InstructionParser::pseudo(space)),
                 ".ascii" => Ok(InstructionParser::pseudo(ascii_lit)),
                 ".asciiz" => Ok(InstructionParser::pseudo(asciiz_lit)),
                 ".text" => Ok(InstructionParser::pseudo(|i| segment(i, Segment::Text))),

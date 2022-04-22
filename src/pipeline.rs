@@ -5,6 +5,8 @@ use crate::stages::writeback::PipelineOutput;
 use crate::syscall::{handle_syscall, Syscall};
 use crate::{Memory, Register, RegisterFile, ZERO};
 
+use anyhow::Result;
+
 /// This is a simple function to single step the CPU.
 ///
 /// Eventually this should pipeline data instead of doing an entire instruction each cycle but that
@@ -17,9 +19,9 @@ pub fn _single_cycle(pc: &mut u32, regs: &mut RegisterFile, mem: &mut Memory) ->
     };
 
     let if_id = stages::fetch(pc, mem);
-    let id_ex = stages::decode(regs, if_id);
-    let ex_mem = stages::execute(id_ex, fwd_unit);
-    let mem_wb = stages::memory(pc, mem, ex_mem);
+    let id_ex = stages::decode(regs, if_id.unwrap());
+    let ex_mem = stages::execute(id_ex.unwrap(), fwd_unit);
+    let mem_wb = stages::memory(pc, mem, ex_mem.unwrap()).unwrap();
     let pipe_out = stages::writeback(regs, mem_wb);
 
     // pretend we jumped to the syscall vector
@@ -57,7 +59,7 @@ pub fn pipe_cycle(
     regs: &mut RegisterFile,
     mem: &mut Memory,
     state: PipelineState,
-) -> (PipelineState, Option<Syscall>) {
+) -> Result<(PipelineState, Option<Syscall>)> {
     // contruct forwarding unit
     let fwd_unit = ForwardingUnit {
         ex_mem: (
@@ -84,24 +86,24 @@ pub fn pipe_cycle(
             Some(handle_syscall(regs, mem).unwrap_or_else(|e| Syscall::Error(format!("{}", e))));
         // stall in case of syscall
         // TODO: Maybe not the best solution but ¯\_(ツ)_/¯
-        return (
+        return Ok((
             PipelineState {
                 pipe_out,
                 mem_wb: MemWb::default(),
                 ..state
             },
             syscall,
-        );
+        ));
     }
 
-    let mem_wb = stages::memory(pc, mem, state.ex_mem.clone());
+    let mem_wb = stages::memory(pc, mem, state.ex_mem.clone())?;
 
-    let ex_mem = stages::execute(state.id_ex.clone(), fwd_unit);
+    let ex_mem = stages::execute(state.id_ex.clone(), fwd_unit)?;
 
     // stall in case of syscall
     // TODO: Maybe not the best solution but ¯\_(ツ)_/¯
     if ex_mem.syscall || mem_wb.syscall {
-        return (
+        return Ok((
             PipelineState {
                 if_id: state.if_id,
                 id_ex: IdEx::default(),
@@ -110,13 +112,13 @@ pub fn pipe_cycle(
                 pipe_out,
             },
             None,
-        );
+        ));
     }
-    let id_ex = stages::decode(regs, state.if_id.clone());
+    let id_ex = stages::decode(regs, state.if_id.clone())?;
     // hazard detector
     if state.id_ex.mem_read {
         if state.id_ex.rt == id_ex.rs {
-            return (
+            return Ok((
                 PipelineState {
                     if_id: state.if_id,
                     id_ex: IdEx::default(),
@@ -125,10 +127,10 @@ pub fn pipe_cycle(
                     pipe_out,
                 },
                 None,
-            );
+            ));
         }
         if state.id_ex.rt == id_ex.rt {
-            return (
+            return Ok((
                 PipelineState {
                     if_id: state.if_id,
                     id_ex: IdEx::default(),
@@ -137,20 +139,20 @@ pub fn pipe_cycle(
                     pipe_out,
                 },
                 None,
-            );
+            ));
         }
     }
 
     let if_id = stages::fetch(pc, mem);
 
-    (
+    Ok((
         PipelineState {
-            if_id,
+            if_id: if_id?,
             id_ex,
             ex_mem,
             mem_wb,
             pipe_out,
         },
         None,
-    )
+    ))
 }

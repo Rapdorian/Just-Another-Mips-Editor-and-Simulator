@@ -2,6 +2,7 @@ use crate::{
     stages::execute::{op_ctrl::*, IdEx},
     Register, RegisterFile,
 };
+use anyhow::{bail, Result};
 
 // Struct representing this stages inputs
 #[derive(Debug, Default, Clone)]
@@ -11,7 +12,7 @@ pub struct IfId {
 }
 
 /// Decodes and instruction
-pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
+pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> Result<IdEx> {
     // instruction masks
     let fn_mask = 0b00000000000000000000000000111111;
     let sh_mask = 0b00000000000000000000011111000000;
@@ -31,6 +32,9 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
     let op = (input.instruction & op_mask) >> 26;
     let mut imm = input.instruction & imm_mask;
     let j_imm = input.instruction & j_mask;
+
+    // sign extend the imm value
+    imm = ((imm << 16) as i32 >> 16) as u32;
 
     // make registers typed
     let rs: Register = rs.into();
@@ -192,11 +196,11 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
             imm = j_imm;
         }
         _ => {
-            todo!("implement missing instruction: 0x{:x}", op)
+            bail!("Unrecognized instruction opcode 0x{:x}", op)
         }
     }
 
-    IdEx {
+    Ok(IdEx {
         alu_src,
         reg_dst,
         alu_op,
@@ -218,5 +222,5 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> IdEx {
         pc: input.pc,
         syscall,
         instruction: input.instruction,
-    }
+    })
 }
