@@ -157,10 +157,12 @@ pub fn assembler(script: &str) -> Result<(Memory, LabelTable)> {
         match line {
             Line::Instruction(ins) => {
                 for word in ins {
-                    let bin = word.asm(&labels, *pc);
+                    let (bin, _) = word.asm(&labels, *pc);
                     //println!("{pc:X} {bin:X}\t{word:?}");
-                    *memory.get_mut(*pc) = bin;
-                    *pc += 4;
+                    for byte in bin {
+                        memory.set_byte(*pc, byte)?;
+                        *pc += 1;
+                    }
                 }
             }
             Line::Segment(seg) => pc = segments.switch(*seg),

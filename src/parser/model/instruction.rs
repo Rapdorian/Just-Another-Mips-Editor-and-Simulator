@@ -61,7 +61,7 @@ pub enum Instruction {
         addr: Symbol,
     },
     Literal {
-        data: u32,
+        data: Vec<u8>,
     },
 }
 
@@ -70,7 +70,7 @@ fn field(x: u32, start: u32, width: u32) -> u32 {
 }
 
 impl Instruction {
-    pub fn asm(&self, labels: &LabelTable, pc: u32) -> u32 {
+    pub fn asm(&self, labels: &LabelTable, pc: u32) -> (Vec<u8>, usize) {
         match self {
             Instruction::R {
                 op,
@@ -78,23 +78,32 @@ impl Instruction {
                 rs,
                 rt,
                 shamt,
-            } => {
-                field(op.value(), 0, 6)
+            } => (
+                (field(op.value(), 0, 6)
                     | field(rd.value(), 11, 6)
                     | field(rt.value(), 16, 6)
                     | field(rs.value(), 21, 6)
-                    | field(*shamt, 6, 5)
-            }
-            Instruction::I { op, rt, rs, imm } => {
-                field(op.value(), 26, 6)
+                    | field(*shamt, 6, 5))
+                .to_le_bytes()
+                .to_vec(),
+                4,
+            ),
+            Instruction::I { op, rt, rs, imm } => (
+                (field(op.value(), 26, 6)
                     | field(imm.asm(labels, pc), 0, 16)
                     | field(rt.value(), 16, 5)
-                    | field(rs.value(), 21, 5)
-            }
-            Instruction::Literal { data } => *data,
-            Instruction::J { op, addr } => {
-                field(op.value(), 26, 6) | field(addr.asm(labels), 0, 26)
-            }
+                    | field(rs.value(), 21, 5))
+                .to_le_bytes()
+                .to_vec(),
+                4,
+            ),
+            Instruction::Literal { data } => (data.clone(), data.len()),
+            Instruction::J { op, addr } => (
+                (field(op.value(), 26, 6) | field(addr.asm(labels), 0, 26))
+                    .to_le_bytes()
+                    .to_vec(),
+                4,
+            ),
         }
     }
 }
