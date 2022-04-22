@@ -1,6 +1,9 @@
+use anyhow::Result;
 use eframe::egui::{ComboBox, Response, TextEdit, Ui, Widget};
 
 use crate::{parser::int, Machine, Register};
+
+use super::console::Console;
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum WatchType {
@@ -41,11 +44,12 @@ impl Watch {
     }
 
     /// Write a value into the contents of this watch
-    pub fn write(&self, vm: &mut Machine, val: u32) {
+    pub fn write(&self, vm: &mut Machine, val: u32) -> Result<()> {
         match self.ty {
             WatchType::Register => *vm.register_mut(self.val.into()) = val,
-            WatchType::Memory => vm.write_word(self.val, val),
+            WatchType::Memory => vm.write_word(self.val, val)?,
         }
+        Ok(())
     }
 }
 
@@ -54,11 +58,22 @@ pub struct WatchView<'a> {
     watch: &'a mut Watch,
     vm: &'a mut Machine,
     id: usize,
+    console: &'a mut Console,
 }
 
 impl<'a> WatchView<'a> {
-    pub fn new(watch: &'a mut Watch, vm: &'a mut Machine, id: usize) -> Self {
-        Self { watch, vm, id }
+    pub fn new(
+        watch: &'a mut Watch,
+        vm: &'a mut Machine,
+        id: usize,
+        console: &'a mut Console,
+    ) -> Self {
+        Self {
+            watch,
+            vm,
+            id,
+            console,
+        }
     }
 }
 
@@ -110,9 +125,13 @@ impl<'a> Widget for WatchView<'a> {
                     .frame(false),
             );
             if let Ok((_, val)) = int::<u32>(&contents) {
-                self.watch.write(self.vm, val);
+                if let Err(e) = self.watch.write(self.vm, val) {
+                    self.console.error(&format!("ERROR: {e:#}"));
+                }
             } else if contents.trim().len() == 0 {
-                self.watch.write(self.vm, 0);
+                if let Err(e) = self.watch.write(self.vm, 0) {
+                    self.console.error(&format!("ERROR: {e:#}"));
+                }
             }
         })
         .response
@@ -123,11 +142,16 @@ impl<'a> Widget for WatchView<'a> {
 pub struct WatchList<'a> {
     watches: &'a mut Vec<Watch>,
     vm: &'a mut Machine,
+    console: &'a mut Console,
 }
 
 impl<'a> WatchList<'a> {
-    pub fn new(watches: &'a mut Vec<Watch>, vm: &'a mut Machine) -> Self {
-        Self { watches, vm }
+    pub fn new(watches: &'a mut Vec<Watch>, vm: &'a mut Machine, console: &'a mut Console) -> Self {
+        Self {
+            watches,
+            vm,
+            console,
+        }
     }
 }
 
@@ -142,7 +166,12 @@ impl<'a> Widget for WatchList<'a> {
             let mut del_list = vec![];
             for i in 0..self.watches.len() {
                 ui.horizontal(|ui| {
-                    ui.add(WatchView::new(&mut self.watches[i], self.vm, i));
+                    ui.add(WatchView::new(
+                        &mut self.watches[i],
+                        self.vm,
+                        i,
+                        self.console,
+                    ));
                     if i != self.watches.len() - 1 {
                         // draw this watch with a delete button
                         // if we want to delete this watch record its index so we can delete it once we are

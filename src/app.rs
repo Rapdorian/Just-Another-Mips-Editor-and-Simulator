@@ -74,7 +74,7 @@ impl epi::App for App {
         // a specific part of the screen
         egui::Window::new("Watches")
             .open(show_watches)
-            .show(ctx, |ui| ui.add(WatchList::new(watches, machine)));
+            .show(ctx, |ui| ui.add(WatchList::new(watches, machine, console)));
 
         egui::Window::new("Memory")
             .open(show_memory)

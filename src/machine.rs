@@ -36,8 +36,9 @@ impl Machine {
         self.mem.get(addr)
     }
 
-    pub fn write_word(&mut self, addr: u32, val: u32) {
-        *self.mem.get_mut(addr) = val;
+    pub fn write_word(&mut self, addr: u32, val: u32) -> Result<()> {
+        *self.mem.get_mut(addr)? = val;
+        Ok(())
     }
 
     /// Reset this machine so it can be ran again
@@ -171,8 +172,8 @@ pub fn assembler(script: &str) -> Result<(Memory, LabelTable)> {
     }
     // insert guard instruction that causes the program to crash if it is encountered
     pc = segments.switch(Segment::Text);
-    *memory.get_mut(*pc) = 0x3402DEAD;
-    *memory.get_mut(*pc + 4) = 0xC;
+    *memory.get_mut(*pc)? = 0x3402DEAD;
+    *memory.get_mut(*pc + 4)? = 0xC;
 
     Ok((memory, labels))
 }

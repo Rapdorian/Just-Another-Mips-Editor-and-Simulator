@@ -63,6 +63,12 @@ impl Memory {
         let page_num = aligned_address / self.page_size as u32;
         let page_offset = aligned_address - (self.page_size as u32 * page_num);
 
+        if align_offset != 0 {
+            bail!(format!(
+                "Unaligned memory access: {address:08X} expected to be aligned to 4 bytes"
+            ));
+        }
+
         let page = self.data.get(&page_num);
         Ok((match page {
             Some(page) => page[page_offset as usize],
@@ -71,12 +77,18 @@ impl Memory {
     }
 
     /// Gets a mutable reference to a word aligned memory location
-    pub fn get_mut(&mut self, address: u32) -> &mut u32 {
+    pub fn get_mut(&mut self, address: u32) -> Result<&mut u32> {
         let aligned_address = address / 4;
         let page_num = aligned_address / self.page_size as u32;
         let page_offset = aligned_address - (self.page_size as u32 * page_num);
 
+        if address % 4 != 0 {
+            bail!(format!(
+                "Unaligned memory access: {address:08X} expected to be aligned to 4 bytes"
+            ));
+        }
+
         let page = self.data.entry(page_num).or_insert(vec![0; self.page_size]);
-        &mut page[page_offset as usize]
+        Ok(&mut page[page_offset as usize])
     }
 }

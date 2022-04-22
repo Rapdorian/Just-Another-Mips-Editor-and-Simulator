@@ -33,7 +33,7 @@ pub fn memory(pc: &mut u32, memory: &mut Memory, input: ExMem) -> Result<MemWb> 
 
     // handle memory accesses
     if input.write {
-        *memory.get_mut(input.alu_result) = input.write_data;
+        *memory.get_mut(input.alu_result)? = input.write_data;
     }
     if input.read {
         read_data = memory.get(input.alu_result).context("In memory stage")?;
