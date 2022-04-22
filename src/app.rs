@@ -12,6 +12,7 @@ use crate::{Machine, Register};
 use self::{
     console::Console,
     editor::Editor,
+    memory::MemoryView,
     pipeline_view::PipelineView,
     run_menu::RunMenu,
     watches::{Watch, WatchList},
@@ -19,6 +20,7 @@ use self::{
 
 mod console;
 mod editor;
+mod memory;
 mod pipeline_view;
 mod run_menu;
 mod watches;
@@ -36,6 +38,8 @@ pub struct App {
     stack_hex: bool,
     watches: Vec<Watch>,
     running: bool,
+    show_memory: bool,
+    view_address: usize,
 }
 
 fn open_script() -> Option<String> {
@@ -62,6 +66,8 @@ impl epi::App for App {
             stack_hex,
             watches,
             running,
+            show_memory,
+            view_address,
         } = self;
 
         // Draw the watches in their own window, draw it first so the window is not constrained to
@@ -69,6 +75,10 @@ impl epi::App for App {
         egui::Window::new("Watches")
             .open(show_watches)
             .show(ctx, |ui| ui.add(WatchList::new(watches, machine)));
+
+        egui::Window::new("Memory")
+            .open(show_memory)
+            .show(ctx, |ui| ui.add(MemoryView::new(machine, view_address)));
 
         // draw the menu bars
         egui::TopBottomPanel::top("Menu").show(ctx, |ui| {
@@ -97,6 +107,10 @@ impl epi::App for App {
                 ui.menu_button("View", |ui| {
                     if ui.button("Watches").clicked() {
                         *show_watches = true;
+                        ui.close_menu();
+                    }
+                    if ui.button("Memory").clicked() {
+                        *show_memory = true;
                         ui.close_menu();
                     }
                     if ui.button("Toggle Stack View").clicked() {
@@ -203,5 +217,45 @@ impl epi::App for App {
     }
     fn name(&self) -> &str {
         "Just Another Mips Editor and Simulator"
+    }
+
+    fn setup(
+        &mut self,
+        _ctx: &egui::CtxRef,
+        _frame: &epi::Frame,
+        _storage: Option<&dyn epi::Storage>,
+    ) {
+    }
+
+    fn warm_up_enabled(&self) -> bool {
+        false
+    }
+
+    fn save(&mut self, _storage: &mut dyn epi::Storage) {}
+
+    fn on_exit(&mut self) {}
+
+    fn auto_save_interval(&self) -> std::time::Duration {
+        std::time::Duration::from_secs(30)
+    }
+
+    fn max_size_points(&self) -> egui::Vec2 {
+        // Some browsers get slow with huge WebGL canvases, so we limit the size:
+        egui::Vec2::new(1024.0, 2048.0)
+    }
+
+    fn clear_color(&self) -> egui::Rgba {
+        // NOTE: a bright gray makes the shadows of the windows look weird.
+        // We use a bit of transparency so that if the user switches on the
+        // `transparent()` option they get immediate results.
+        egui::Color32::from_rgba_unmultiplied(12, 12, 12, 180).into()
+    }
+
+    fn persist_native_window(&self) -> bool {
+        true
+    }
+
+    fn persist_egui_memory(&self) -> bool {
+        true
     }
 }
