@@ -12,7 +12,7 @@ use num::Num;
 
 pub fn num_str(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
     recognize(many1(terminated(
-        one_of("-+0123456789ABCDEF"),
+        one_of("-+0123456789ABCDEFabcdef"),
         many0(char('_')),
     )))(input)
 }

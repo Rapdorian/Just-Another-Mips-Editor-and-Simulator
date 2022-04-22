@@ -33,6 +33,9 @@ pub fn decode(reg_file: &mut RegisterFile, input: IfId) -> Result<IdEx> {
     let mut imm = input.instruction & imm_mask;
     let j_imm = input.instruction & j_mask;
 
+    // sign extend the imm value
+    imm = ((imm << 16) as i32 >> 16) as u32;
+
     // make registers typed
     let rs: Register = rs.into();
     let rt: Register = rt.into();
