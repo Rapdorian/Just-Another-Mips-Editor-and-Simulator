@@ -17,7 +17,7 @@ anyhow = "1.0.45"
 clap = "2.33.3"
 nom = "7.1.0"
 num = "0.4.0"
-eframe = "0.16.0"
+eframe = "0.18.0"
 rfd = "0.8.1"
 
 [features]

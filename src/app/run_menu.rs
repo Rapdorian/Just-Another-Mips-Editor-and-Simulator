@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use eframe::egui::{CtxRef, Response, Ui, Widget};
+use eframe::egui::{Context, Response, Ui, Widget};
 
 use crate::{assembler, parser::model::LabelTable, syscall::Syscall, Machine, Memory};
 
@@ -14,12 +14,12 @@ pub struct RunMenu<'a> {
     running: &'a mut bool,
     script: &'a str,
     console: &'a mut Console,
-    ctx: &'a CtxRef,
+    ctx: &'a Context,
 }
 
 impl<'a> RunMenu<'a> {
     pub fn new(
-        ctx: &'a CtxRef,
+        ctx: &'a Context,
         machine: &'a mut Machine,
         running: &'a mut bool,
         script: &'a str,
