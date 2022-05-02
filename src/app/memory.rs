@@ -8,13 +8,19 @@ use crate::{
 pub struct MemoryView<'a> {
     machine: &'a mut Machine,
     view_address: &'a mut usize,
+    view_endian: &'a mut bool,
 }
 
 impl<'a> MemoryView<'a> {
-    pub fn new(machine: &'a mut Machine, view_address: &'a mut usize) -> Self {
+    pub fn new(
+        machine: &'a mut Machine,
+        view_address: &'a mut usize,
+        view_endian: &'a mut bool,
+    ) -> Self {
         Self {
             machine,
             view_address,
+            view_endian,
         }
     }
 }
@@ -24,12 +30,9 @@ impl<'a> Widget for MemoryView<'a> {
         let Self {
             machine,
             view_address,
+            view_endian,
         } = self;
-        ui.add(
-            DragValue::new(view_address)
-                .prefix("Address: ")
-                .speed(0x1024),
-        );
+
         ui.horizontal(|ui| {
             if ui.button("TEXT").clicked() {
                 *view_address = TEXT_BASE as usize;
@@ -40,6 +43,7 @@ impl<'a> Widget for MemoryView<'a> {
             if ui.button("STACK").clicked() {
                 *view_address = STACK_BASE as usize;
             }
+            ui.checkbox(view_endian, "View little endian");
         });
 
         // display memory table
@@ -62,12 +66,36 @@ impl<'a> Widget for MemoryView<'a> {
                         let addr = addr + (y * (width * 4)) + (x * 4);
                         let value = machine.read_word(addr as u32).unwrap_or(0);
                         let bytes = value.to_le_bytes();
-                        ui.label(format!(
-                            "{:02X}{:02X}{:02X}{:02X}",
-                            bytes[0], bytes[1], bytes[2], bytes[3]
-                        ));
+                        let txt = if *view_endian {
+                            format!(
+                                "{:02X}{:02X}{:02X}{:02X}",
+                                bytes[3], bytes[2], bytes[1], bytes[0]
+                            )
+                        } else {
+                            format!(
+                                "{:02X}{:02X}{:02X}{:02X}",
+                                bytes[0], bytes[1], bytes[2], bytes[3]
+                            )
+                        };
+                        ui.label(txt);
                     }
                 });
+            }
+        });
+
+        ui.horizontal(|ui| {
+            if ui.button("⏪").clicked() {
+                *view_address -= 8 * 16 * 4;
+            }
+            if ui.button("◀").clicked() {
+                *view_address -= 8 * 8;
+            }
+
+            if ui.button("▶").clicked() {
+                *view_address += 8 * 8;
+            }
+            if ui.button("⏩").clicked() {
+                *view_address += 8 * 16 * 4;
             }
         })
         .response

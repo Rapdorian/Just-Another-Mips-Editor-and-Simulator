@@ -1,8 +1,11 @@
 use std::{ops::Range, sync::Arc};
 
-use eframe::egui::{
-    text::LayoutJob, Color32, Galley, Response, ScrollArea, TextBuffer, TextEdit, TextFormat,
-    TextStyle, Ui, Widget,
+use eframe::{
+    egui::{
+        text::LayoutJob, Color32, Galley, Response, ScrollArea, TextBuffer, TextEdit, TextFormat,
+        TextStyle, Ui, Widget,
+    },
+    epaint::FontId,
 };
 
 #[derive(Default)]
@@ -91,14 +94,16 @@ impl<'a> TextBuffer for ConsoleView<'a> {
 
 impl<'a> Widget for ConsoleView<'a> {
     fn ui(mut self, ui: &mut Ui) -> Response {
-        ScrollArea::vertical().show(ui, |ui| {
-            ui.add_sized(
-                ui.available_size(),
-                TextEdit::multiline(&mut self)
-                    .code_editor()
-                    .layouter(&mut layouter),
-            )
-        })
+        ScrollArea::vertical()
+            .show(ui, |ui| {
+                ui.add_sized(
+                    ui.available_size(),
+                    TextEdit::multiline(&mut self)
+                        .code_editor()
+                        .layouter(&mut layouter),
+                )
+            })
+            .inner
     }
 }
 
@@ -108,18 +113,29 @@ pub fn layouter(ui: &Ui, string: &str, wrap_width: f32) -> Arc<Galley> {
     let mut color = Color32::WHITE;
     for c in string.chars() {
         if c == '\x07' {
-            layout.append(&sect, 0.0, TextFormat::simple(TextStyle::Monospace, color));
+            layout.append(
+                &sect,
+                0.0,
+                TextFormat::simple(FontId::monospace(12.0), color),
+            );
             color = Color32::RED;
             sect = String::new();
         } else if c == '\x1b' {
-            layout.append(&sect, 0.0, TextFormat::simple(TextStyle::Monospace, color));
+            layout.append(
+                &sect,
+                0.0,
+                TextFormat::simple(FontId::monospace(12.0), color),
+            );
             color = Color32::WHITE;
             sect = String::new();
         } else {
             sect.push(c);
         }
     }
-    layout.append(&sect, 0.0, TextFormat::simple(TextStyle::Monospace, color));
-    layout.wrap_width = wrap_width;
+    layout.append(
+        &sect,
+        0.0,
+        TextFormat::simple(FontId::monospace(12.0), color),
+    );
     ui.fonts().layout_job(layout)
 }

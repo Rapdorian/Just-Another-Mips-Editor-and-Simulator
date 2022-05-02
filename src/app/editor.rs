@@ -1,8 +1,11 @@
 use std::sync::Arc;
 
-use eframe::egui::{
-    text::LayoutJob, Align2, Color32, Galley, Response, ScrollArea, TextEdit, TextFormat,
-    TextStyle, Ui, Widget,
+use eframe::{
+    egui::{
+        text::LayoutJob, Align2, Color32, Galley, Response, ScrollArea, TextEdit, TextFormat,
+        TextStyle, Ui, Widget,
+    },
+    epaint::FontId,
 };
 
 pub struct Editor<'a> {
@@ -19,30 +22,32 @@ impl<'a> Editor<'a> {
 impl<'a> Widget for Editor<'a> {
     fn ui(self, ui: &mut Ui) -> Response {
         let Self { text, pc } = self;
-        ScrollArea::vertical().show(ui, |ui| {
-            let resp = ui.add_sized(
-                ui.available_size(),
-                TextEdit::multiline(text)
-                    .code_editor()
-                    .layouter(&mut |ui, s, ww| layouter(ui, s, ww, pc)),
-            );
+        ScrollArea::vertical()
+            .show(ui, |ui| {
+                let resp = ui.add_sized(
+                    ui.available_size(),
+                    TextEdit::multiline(text)
+                        .code_editor()
+                        .layouter(&mut |ui, s, ww| layouter(ui, s, ww, pc)),
+                );
 
-            // create line string
-            let line_numbers = text
-                .lines()
-                .enumerate()
-                .fold(String::new(), |acc, (i, _)| format!("{acc}{}\n", i + 1));
+                // create line string
+                let line_numbers = text
+                    .lines()
+                    .enumerate()
+                    .fold(String::new(), |acc, (i, _)| format!("{acc}{}\n", i + 1));
 
-            let origin = resp.rect.min;
-            ui.painter().text(
-                origin,
-                Align2::LEFT_TOP,
-                &line_numbers,
-                TextStyle::Monospace,
-                ui.style().visuals.widgets.noninteractive.fg_stroke.color,
-            );
-            resp
-        })
+                let origin = resp.rect.min;
+                ui.painter().text(
+                    origin,
+                    Align2::LEFT_TOP,
+                    &line_numbers,
+                    FontId::monospace(12.0),
+                    ui.style().visuals.widgets.noninteractive.fg_stroke.color,
+                );
+                resp
+            })
+            .inner
     }
 }
 
@@ -111,7 +116,7 @@ pub fn layouter<'a>(
                 &format!("{span}"),
                 if *indent { 30.0 } else { 0.0 },
                 TextFormat {
-                    style: TextStyle::Monospace,
+                    font_id: FontId::monospace(12.0),
                     background: bg,
                     color: fg,
                     ..TextFormat::default()
@@ -140,7 +145,5 @@ pub fn layouter<'a>(
         span.push('\n');
         handle_token(&mut span, &mut comment, &mut idx, &mut indent, &mut layout);
     }
-
-    layout.wrap_width = wrap_width;
     ui.fonts().layout_job(layout)
 }

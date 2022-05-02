@@ -53,6 +53,20 @@ impl Memory {
         Ok(())
     }
 
+    /// Get a single byte
+    pub fn get_byte(&mut self, address: u32) -> Result<u8> {
+        let aligned_address = address / 4;
+        let align_offset = address % 4;
+        let page_num = aligned_address / self.page_size as u32;
+        let page_offset = aligned_address - (self.page_size as u32 * page_num);
+
+        let page = self.data.get(&page_num);
+        Ok(match page {
+            Some(page) => (page[page_offset as usize] >> (align_offset * 8)) as u8,
+            None => 0,
+        })
+    }
+
     /// Gets the value of an aligned memory location.
     ///
     /// Note: If the address is not word aligned it will read unaligned but cannot read past the

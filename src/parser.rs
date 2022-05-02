@@ -119,7 +119,14 @@ pub fn compute_labels(input: &[Line]) -> LabelTable {
             }
             Line::Instruction(ins) => {
                 labels.insert_line(i, *pc);
-                *pc += ins.len() as u32 * 4;
+                let mut len = 0;
+                for inst in ins {
+                    len += match inst {
+                        model::Instruction::Literal { data } => data.len(),
+                        _ => 4,
+                    };
+                }
+                *pc += len as u32;
             }
             Line::Segment(seg) => pc = segments.switch(*seg),
             _ => {}

@@ -1,9 +1,6 @@
 use std::fs::read_to_string;
 
-use eframe::{
-    egui::{self, menu, ScrollArea},
-    epi,
-};
+use eframe::egui::{self, menu, ScrollArea};
 
 use rfd::FileDialog;
 
@@ -40,6 +37,7 @@ pub struct App {
     running: bool,
     show_memory: bool,
     view_address: usize,
+    view_endian: bool,
 }
 
 fn open_script() -> Option<String> {
@@ -52,8 +50,10 @@ fn open_script() -> Option<String> {
     }
 }
 
-impl epi::App for App {
-    fn update(&mut self, ctx: &egui::CtxRef, _frame: &epi::Frame) {
+impl eframe::App for App {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        frame.set_window_title("Just Another Mips Editor and Simulator");
+
         let Self {
             machine,
             script,
@@ -68,6 +68,7 @@ impl epi::App for App {
             running,
             show_memory,
             view_address,
+            view_endian,
         } = self;
 
         // Draw the watches in their own window, draw it first so the window is not constrained to
@@ -78,7 +79,9 @@ impl epi::App for App {
 
         egui::Window::new("Memory")
             .open(show_memory)
-            .show(ctx, |ui| ui.add(MemoryView::new(machine, view_address)));
+            .show(ctx, |ui| {
+                ui.add(MemoryView::new(machine, view_address, view_endian))
+            });
 
         // draw the menu bars
         egui::TopBottomPanel::top("Menu").show(ctx, |ui| {
@@ -214,48 +217,5 @@ impl epi::App for App {
             }
             ui.add(Editor::new(script, &machine.current_line()))
         });
-    }
-    fn name(&self) -> &str {
-        "Just Another Mips Editor and Simulator"
-    }
-
-    fn setup(
-        &mut self,
-        _ctx: &egui::CtxRef,
-        _frame: &epi::Frame,
-        _storage: Option<&dyn epi::Storage>,
-    ) {
-    }
-
-    fn warm_up_enabled(&self) -> bool {
-        false
-    }
-
-    fn save(&mut self, _storage: &mut dyn epi::Storage) {}
-
-    fn on_exit(&mut self) {}
-
-    fn auto_save_interval(&self) -> std::time::Duration {
-        std::time::Duration::from_secs(30)
-    }
-
-    fn max_size_points(&self) -> egui::Vec2 {
-        // Some browsers get slow with huge WebGL canvases, so we limit the size:
-        egui::Vec2::new(1024.0, 2048.0)
-    }
-
-    fn clear_color(&self) -> egui::Rgba {
-        // NOTE: a bright gray makes the shadows of the windows look weird.
-        // We use a bit of transparency so that if the user switches on the
-        // `transparent()` option they get immediate results.
-        egui::Color32::from_rgba_unmultiplied(12, 12, 12, 180).into()
-    }
-
-    fn persist_native_window(&self) -> bool {
-        true
-    }
-
-    fn persist_egui_memory(&self) -> bool {
-        true
     }
 }
